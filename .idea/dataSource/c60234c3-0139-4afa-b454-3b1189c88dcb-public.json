@@ -1,0 +1,22 @@
+{
+  "name" : "public",
+  "SEQUENCES" : [ ],
+  "FUNCTIONS" : [ ],
+  "VIEWS" : [ ],
+  "TABLES" : [ {
+    "TABLE_NAME" : "cash_dividend",
+    "IS_TEMPORARY" : "N"
+  }, {
+    "TABLE_NAME" : "corporate_action",
+    "IS_TEMPORARY" : "N"
+  }, {
+    "TABLE_NAME" : "special_dividend",
+    "IS_TEMPORARY" : "N"
+  }, {
+    "TABLE_NAME" : "stock_dividend",
+    "IS_TEMPORARY" : "N"
+  }, {
+    "TABLE_NAME" : "stock_split",
+    "IS_TEMPORARY" : "N"
+  } ]
+}
