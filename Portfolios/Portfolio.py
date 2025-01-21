@@ -8,6 +8,7 @@ from Identifier.WeightingMethodologyEnum import WeightingMethodologyEnum
 
 class Portfolio(Base):
     __tablename__ = 'portfolio'
+    API_Path = "Portfolio"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     symbol = Column(String(100), nullable=False)

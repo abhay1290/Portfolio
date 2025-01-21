@@ -10,6 +10,7 @@ from Database.database import Base
 
 class CorporateAction(Base):
     __tablename__ = 'corporate_action'
+    API_Path = 'CorporateAction'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 

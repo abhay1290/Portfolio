@@ -8,6 +8,7 @@ from Database.database import Base
 
 class Equity(Base):
     __tablename__ = 'equity'
+    API_Path = "Equity"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
