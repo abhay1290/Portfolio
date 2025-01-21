@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 
-from Database.database2 import Base
+from Database.database import Base
 
 class RightsIssue(Base):
     __tablename__ = 'rights_issue'

@@ -2,7 +2,7 @@ import datetime
 from sqlalchemy import Column, DateTime, Integer, ForeignKey, Numeric, String
 from sqlalchemy.orm import relationship
 
-from Database.database2 import Base
+from Database.database import Base
 
 
 class Merger(Base):

@@ -1,4 +1,5 @@
-import CorporateActionEnum
+from CorporateActions.CorporateActionEnum import CorporateActionEnum
+
 
 class CorporateActionExecutor:
     def execute_action(self, action: CorporateActionEnum, **kwargs):
@@ -7,9 +8,8 @@ class CorporateActionExecutor:
             CorporateActionEnum.CASH_DIVIDEND: self._execute_cash_dividend,
             CorporateActionEnum.STOCK_DIVIDEND: self._execute_stock_dividend,
             CorporateActionEnum.SPECIAL_DIVIDEND: self._execute_special_dividend,
-            CorporateActionEnum.FORWARD_STOCK_SPLIT: self._execute_forward_stock_split,
-            CorporateActionEnum.REVERSE_STOCK_SPLIT: self._execute_reverse_stock_split,
-            CorporateActionEnum.RIGHTS_ISSUE_AUTO: self._execute_rights_issue_auto,
+            CorporateActionEnum.STOCK_SPLIT: self._execute_stock_split,
+            CorporateActionEnum.RIGHTS_ISSUE: self._execute_rights_issue,
             CorporateActionEnum.MERGER: self._execute_merger,
             # CorporateActionEnum.ACQUISITION: self._execute_acquisition,
             # CorporateActionEnum.TAKEOVER: self._execute_takeover,

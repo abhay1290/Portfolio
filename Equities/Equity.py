@@ -5,14 +5,14 @@ from Currency.CurrencyEnum import CurrencyEnum
 from Identifier.AssetClassEnum import AssetClassEnum
 from Identifier.SecurityIdentifier import SecurityIdentifier
 
-from Database.database2 import Base
+from Database.database import Base
 
 class Equity(Base):
     __tablename__ = 'equity'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
-    symbol = Column(String(10000), nullable=False, unique=True)
+    symbol = Column(String(10000), nullable=False)
     #asset_class = Column(Enum(AssetClassEnum), nullable=False)
     company_name = Column(String(100), nullable=False)
     sector = Column(String(100), nullable=True)

@@ -6,7 +6,7 @@ from CorporateActions.CorporateActionEnum import CorporateActionEnum
 from CorporateActions.StatusEnum import StatusEnum
 from Currency.CurrencyEnum import CurrencyEnum
 
-from Database.database2 import Base
+from Database.database import Base
 
 
 class CorporateAction(Base):

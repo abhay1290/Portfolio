@@ -1,18 +1,16 @@
-from abc import ABC
-
 from sqlalchemy import Column, Enum, Integer, String
 
 from Currency.CurrencyEnum import CurrencyEnum
-from Database.database2 import Base
+from Database.database import Base
 from Identifier.AssetClassEnum import AssetClassEnum
 from Identifier.TaxTypeEnum import TaxTypeEnum
 from Identifier.WeightingMethodologyEnum import WeightingMethodologyEnum
 
-class Portfolio(Base, ABC):
+class Portfolio(Base):
     __tablename__ = 'portfolio'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    symbol = Column(String(100), nullable=False, unique=True)
+    symbol = Column(String(100), nullable=False)
 
     currency = Column(Enum(CurrencyEnum), nullable=False)
     asset_class = Column(Enum(AssetClassEnum), nullable=False)

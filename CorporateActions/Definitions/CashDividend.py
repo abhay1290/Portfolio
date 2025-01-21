@@ -2,7 +2,7 @@ import datetime
 from sqlalchemy import Column, Integer, Numeric, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 
-from Database.database2 import Base
+from Database.database import Base
 
 
 class CashDividend(Base):

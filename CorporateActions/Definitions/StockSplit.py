@@ -3,7 +3,7 @@ import datetime
 from sqlalchemy import Column, Float, Integer, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 
-from Database.database2 import Base
+from Database.database import Base
 
 class StockSplit(Base):
     __tablename__ = 'stock_split'
