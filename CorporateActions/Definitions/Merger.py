@@ -9,7 +9,7 @@ class Merger(Base):
     __tablename__ = 'mergers'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    corporate_action_id = Column(Integer, ForeignKey('corporate_action.id'), unique=True)
+    # corporate_action_id = Column(Integer, ForeignKey('corporate_action.id'), unique=True)
 
     company_a = Column(String, nullable=False)
     company_b = Column(String, nullable=False)
@@ -19,8 +19,8 @@ class Merger(Base):
     target_price = Column(Numeric, nullable=False)
     premium_percent = Column(Numeric, nullable=False)
 
-    # Relationship back reference
-    corporate_action = relationship("CorporateAction", backref="mergers")
+    # # Relationship back reference
+    # corporate_action = relationship("CorporateAction", backref="mergers")
 
     def __init__(self, company_a, company_b, record_date: datetime, payment_date: datetime,
                  acquirer_price: float, target_price: float, premium_percent: float):

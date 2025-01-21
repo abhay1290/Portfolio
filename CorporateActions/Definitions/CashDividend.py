@@ -9,7 +9,7 @@ class CashDividend(Base):
     __tablename__ = 'cash_dividend'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    corporate_action_id = Column(Integer, ForeignKey('corporate_action.id'), unique=True)
+    # corporate_action_id = Column(Integer, ForeignKey('corporate_action.id'), unique=True)
 
     dividend_amount = Column(Numeric, nullable=False)
     declaration_date = Column(DateTime, nullable=False)
@@ -17,8 +17,8 @@ class CashDividend(Base):
     record_date = Column(DateTime, nullable=False)
     payment_date = Column(DateTime, nullable=False)
 
-    # Relationship back reference
-    corporate_action = relationship("CorporateAction", backref="cash_dividend")
+    # # Relationship back reference
+    # corporate_action = relationship("CorporateAction", backref="cash_dividend")
 
 
     def __init__(self, dividend_amount, declaration_date: datetime,

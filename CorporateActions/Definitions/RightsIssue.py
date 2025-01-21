@@ -8,7 +8,7 @@ class RightsIssue(Base):
     __tablename__ = 'rights_issue'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    corporate_action_id = Column(Integer, ForeignKey('corporate_action.id'), unique=True)
+    # corporate_action_id = Column(Integer, ForeignKey('corporate_action.id'), unique=True)
 
     announcement_date = Column(DateTime, nullable=False)
     offer_price = Column(Float, nullable=False)
@@ -20,8 +20,8 @@ class RightsIssue(Base):
     use_of_proceeds = Column(String, nullable=True)
 
     # Relationship back reference
-    corporate_action = relationship("CorporateAction", backref="rights_issue")
-
+    # corporate_action = relationship("CorporateAction", backref="rights_issue")
+    #
 
     def __init__(self, announcement_date: datetime, offer_price: float, offer_ratio: float,
                  record_date: datetime, subscription_start_date: datetime, subscription_end_date: datetime,

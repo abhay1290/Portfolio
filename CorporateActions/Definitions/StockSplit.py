@@ -9,7 +9,7 @@ class StockSplit(Base):
     __tablename__ = 'stock_split'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    corporate_action_id = Column(Integer, ForeignKey('corporate_action.id'), unique=True)
+    # corporate_action_id = Column(Integer, ForeignKey('corporate_action.id'), unique=True)
 
     split_rate = Column(Float, nullable=False)
     declaration_date = Column(DateTime, nullable=False)
@@ -18,7 +18,7 @@ class StockSplit(Base):
     payment_date = Column(DateTime, nullable=False)
 
     # Relationship back reference
-    corporate_action = relationship("CorporateAction", backref="stock_split")
+    # corporate_action = relationship("CorporateAction", backref="stock_split")
 
     def __init__(self, split_rate: float, declaration_date: datetime,
                  ex_dividend_date: datetime, record_date: datetime, payment_date: datetime):

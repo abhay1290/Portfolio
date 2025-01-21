@@ -10,7 +10,7 @@ class StockDividend(Base):
     __tablename__ = 'stock_dividend'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    corporate_action_id = Column(Integer, ForeignKey('corporate_action.id'), unique=True)
+    # corporate_action_id = Column(Integer, ForeignKey('corporate_action.id'), unique=True)
 
     dividend_rate = Column(Float, nullable=False)
     declaration_date = Column(DateTime, nullable=False)
@@ -18,8 +18,8 @@ class StockDividend(Base):
     record_date = Column(DateTime, nullable=False)
     payment_date = Column(DateTime, nullable=False)
 
-    # Relationship back reference
-    corporate_action = relationship("CorporateAction", backref="stock_dividend")
+    # # Relationship back reference
+    # corporate_action = relationship("CorporateAction", backref="stock_dividend")
 
     def __init__(self, dividend_rate: float, declaration_date: datetime,
                  ex_dividend_date: datetime, record_date: datetime, payment_date: datetime):
