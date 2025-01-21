@@ -8,7 +8,7 @@ class RightsIssue(Base):
     __tablename__ = 'rights_issue'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    corporate_action_id = Column(Integer, ForeignKey('corporate_action.action_id'), unique=True)
+    corporate_action_id = Column(Integer, ForeignKey('corporate_action.id'), unique=True)
 
     announcement_date = Column(DateTime, nullable=False)
     offer_price = Column(Float, nullable=False)

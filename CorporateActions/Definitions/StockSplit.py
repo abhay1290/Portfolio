@@ -9,7 +9,7 @@ class StockSplit(Base):
     __tablename__ = 'stock_split'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    corporate_action_id = Column(Integer, ForeignKey('corporate_action.action_id'), unique=True)
+    corporate_action_id = Column(Integer, ForeignKey('corporate_action.id'), unique=True)
 
     split_rate = Column(Float, nullable=False)
     declaration_date = Column(DateTime, nullable=False)

@@ -9,7 +9,7 @@ class Merger(Base):
     __tablename__ = 'mergers'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    corporate_action_id = Column(Integer, ForeignKey('corporate_action.action_id'), unique=True)
+    corporate_action_id = Column(Integer, ForeignKey('corporate_action.id'), unique=True)
 
     company_a = Column(String, nullable=False)
     company_b = Column(String, nullable=False)

@@ -75,8 +75,7 @@ CREATE TABLE equity (
 
 -- Create the corporate_action table with equity_id as a foreign key
 CREATE TABLE corporate_action (
-    action_id SERIAL PRIMARY KEY,
-    equity_id INTEGER NOT NULL,
+    id SERIAL PRIMARY KEY,
     company_name VARCHAR(255) NOT NULL,
     action_type corporate_action_enum NOT NULL,
     record_date TIMESTAMP NOT NULL,
@@ -84,14 +83,12 @@ CREATE TABLE corporate_action (
     currency currency_enum NOT NULL,
     status status_enum NOT NULL,
     details VARCHAR(500) NOT NULL,
-    FOREIGN KEY (equity_id) REFERENCES equity (id) ON DELETE CASCADE
+
 );
 
 
 CREATE TABLE stock_split (
     id SERIAL PRIMARY KEY,
-    corporate_action_id INTEGER UNIQUE NOT NULL,
-    FOREIGN KEY (corporate_action_id) REFERENCES corporate_action(action_id),
     split_rate FLOAT NOT NULL,
     declaration_date TIMESTAMP NOT NULL,
     ex_dividend_date TIMESTAMP NOT NULL,
@@ -102,8 +99,6 @@ CREATE TABLE stock_split (
 
 CREATE TABLE stock_dividend (
     id SERIAL PRIMARY KEY,
-    corporate_action_id INTEGER UNIQUE NOT NULL,
-    FOREIGN KEY (corporate_action_id) REFERENCES corporate_action(action_id),
     dividend_rate FLOAT NOT NULL,
     declaration_date TIMESTAMP NOT NULL,
     ex_dividend_date TIMESTAMP NOT NULL,
@@ -113,8 +108,6 @@ CREATE TABLE stock_dividend (
 
 CREATE TABLE special_dividend (
     id SERIAL PRIMARY KEY,
-    corporate_action_id INTEGER UNIQUE NOT NULL,
-    FOREIGN KEY (corporate_action_id) REFERENCES corporate_action(action_id),
     dividend_amount NUMERIC NOT NULL,
     declaration_date TIMESTAMP NOT NULL,
     ex_dividend_date TIMESTAMP NOT NULL,
@@ -125,8 +118,6 @@ CREATE TABLE special_dividend (
 
 CREATE TABLE cash_dividend (
     id SERIAL PRIMARY KEY,
-    corporate_action_id INTEGER UNIQUE NOT NULL,
-    FOREIGN KEY (corporate_action_id) REFERENCES corporate_action(action_id),
     dividend_amount NUMERIC NOT NULL,
     declaration_date TIMESTAMP NOT NULL,
     ex_dividend_date TIMESTAMP NOT NULL,
@@ -136,7 +127,6 @@ CREATE TABLE cash_dividend (
 
 CREATE TABLE rights_issue (
     id SERIAL PRIMARY KEY,
-    corporate_action_id INT UNIQUE,
     announcement_date TIMESTAMP NOT NULL,
     offer_price FLOAT NOT NULL,
     offer_ratio FLOAT NOT NULL,
@@ -145,7 +135,6 @@ CREATE TABLE rights_issue (
     subscription_end_date TIMESTAMP NOT NULL,
     total_shares_offered FLOAT NOT NULL,
     use_of_proceeds VARCHAR(255),
-    FOREIGN KEY (corporate_action_id) REFERENCES corporate_action(action_id)
 );
 
 

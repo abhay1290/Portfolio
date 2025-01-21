@@ -1,6 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, ForeignKey, Integer, String, Enum, DateTime
-
+from sqlalchemy import Column, Integer, String, Enum, DateTime
 
 from CorporateActions.CorporateActionEnum import CorporateActionEnum
 from CorporateActions.StatusEnum import StatusEnum
@@ -12,10 +11,9 @@ from Database.database import Base
 class CorporateAction(Base):
     __tablename__ = 'corporate_action'
 
-    action_id = Column(Integer, primary_key=True, autoincrement=True)
-    equity_id = Column(Integer, ForeignKey('equity.id'), unique=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
 
-    company_name = Column(String, nullable=False)   # Delete
+    company_name = Column(String, nullable=False)
     action_type = Column(Enum(CorporateActionEnum), nullable=False)
     record_date = Column(DateTime, nullable=False)
     effective_date = Column(DateTime, nullable=False)
@@ -23,6 +21,9 @@ class CorporateAction(Base):
     status = Column(Enum(StatusEnum), nullable=False)
     details = Column(String, nullable=False)
 
+    # Define relationship back to Equity, allowing the action to be optional
+    # ca = relationship("Equity", back_populates="corporate_actions", uselist=False)
+    # equity_id = Column(Integer, ForeignKey('ca.id'))
 
     def __init__(self, company_name: str, action_type: CorporateActionEnum, record_date: datetime,
                  effective_date: datetime, currency: CurrencyEnum, status: StatusEnum, details: str):
@@ -50,7 +51,7 @@ class CorporateAction(Base):
     def get_action_summary(self):
         """Return a summary of the corporate action details."""
         return {
-            'Action ID': self.action_id,
+            'ID': self.id,
             'Company': self.company_name,
             'Type': self.action_type,
             'Record Date': self.record_date,

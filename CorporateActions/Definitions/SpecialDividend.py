@@ -8,7 +8,7 @@ class SpecialDividend(Base):
     __tablename__ = 'special_dividend'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    corporate_action_id = Column(Integer, ForeignKey('corporate_action.action_id'), unique=True)
+    corporate_action_id = Column(Integer, ForeignKey('corporate_action.id'), unique=True)
 
     dividend_amount = Column(Numeric, nullable=False)
     declaration_date = Column(DateTime, nullable=False)
