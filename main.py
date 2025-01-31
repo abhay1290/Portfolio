@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-
 from CorporateActions.CorporateAction import CorporateAction
 from CorporateActions.corporate_action_schema import CorporateActionCreate, CorporateActionResponse
 from Equities.Equity import Equity
@@ -36,6 +35,7 @@ corporate_action_router = GenericRouter(
     base_path=CorporateAction.API_Path,
     tags=["Corporate Action"]
 ).router
+
 
 # Include routers
 app.include_router(portfolio_router)
