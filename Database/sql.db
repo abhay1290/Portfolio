@@ -51,6 +51,10 @@ CREATE TYPE asset_class_enum AS ENUM ('EQUITY', 'FIXED_INCOME');
 CREATE TYPE tax_type_enum AS ENUM ('GROSS', 'NET');
 CREATE TYPE weighting_methodology_enum AS ENUM ('PRICE', 'MARKET_CAP', 'EQUALLY');
 
+CREATE TYPE day_count_convention_enum AS ENUM ('ACTUAL_360','ACTUAL_365','THIRTY_360');
+
+CREATE TYPE bond_type_enum AS ENUM ('ZERO_COUPON', 'FIXED_COUPON', 'CALLABLE', 'PUTABLE');
+
 CREATE TABLE portfolio (
     id SERIAL PRIMARY KEY,
     symbol VARCHAR(100) NOT NULL UNIQUE,
@@ -135,6 +139,21 @@ CREATE TABLE rights_issue (
     subscription_end_date TIMESTAMP NOT NULL,
     total_shares_offered FLOAT NOT NULL,
     use_of_proceeds VARCHAR(255),
+);
+
+CREATE TABLE bonds (
+    id SERIAL PRIMARY KEY,
+    symbol TEXT NOT NULL,
+    face_value REAL NOT NULL,
+    coupon_rate REAL NOT NULL,
+    maturity_date DATE NOT NULL,
+    issue_date DATE NOT NULL,
+    market_price REAL NOT NULL,
+    bond_type bond_type_enum NOT NULL,  -- Assuming bond_type_enum is already created
+    frequency REAL NOT NULL,
+    day_count_convention day_count_convention_enum NOT NULL,  -- Using the custom enum type
+    settlement_date DATE,
+    credit_rating TEXT
 );
 
 
