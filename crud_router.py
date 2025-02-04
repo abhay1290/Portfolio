@@ -35,22 +35,37 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
         self.pk_name, self.pk_type = self._get_primary_key_info()
 
         # Define routes
-        self.router.post(f"/{self.base_path}s/", response_model=response_schema, status_code=status.HTTP_201_CREATED,
+        self.router.post(f"/{self.base_path}/",
+                         response_model=response_schema,
+                         status_code=status.HTTP_201_CREATED,
                          tags=self.tags)(self.create_item)
-        self.router.get(f"/{self.base_path}s/", response_model=List[response_schema], tags=self.tags)(self.read_items)
-        self.router.get(f"/{self.base_path}s/{self.pk_name}", response_model=response_schema, tags=self.tags)(
-            self.read_item)
-        self.router.get(f"/{self.base_path}s/by-{{fk_name}}/{{fk_value}}", response_model=List[response_schema],
+
+        self.router.get(f"/{self.base_path}/",
+                        response_model=List[response_schema],
+                        tags=self.tags)(self.read_items)
+
+        self.router.get(f"/{self.base_path}/{{item_id}}",
+                        response_model=response_schema,
+                        tags=self.tags)(self.read_item)
+
+        self.router.get(f"/{self.base_path}/by-{{fk_name}}/{{fk_value}}",
+                        response_model=List[response_schema],
                         tags=self.tags)(self.read_by_foreign_key)
-        self.router.put(f"/{self.base_path}s/{self.pk_name}", response_model=response_schema, tags=self.tags)(
-            self.update_item)
-        self.router.delete(f"/{self.base_path}s/{self.pk_name}", tags=self.tags)(self.delete_item)
+
+        self.router.put(f"/{self.base_path}/{{item_id}}",
+                        response_model=response_schema,
+                        tags=self.tags)(self.update_item)
+
+        self.router.delete(f"/{self.base_path}/{{item_id}}",
+                           tags=self.tags)(self.delete_item)
 
     def _get_primary_key_info(self):
         inspector = inspect(self.model)
         pk_columns = inspector.primary_key
         if not pk_columns:
             raise ValueError(f"Model {self.model.__name__} has no primary key.")
+        if len(pk_columns) > 1:
+            raise ValueError(f"Model {self.model.__name__} has a composite primary key, which is not supported.")
         pk_column = pk_columns[0]
         return pk_column.name, pk_column.type.python_type
 
@@ -58,10 +73,10 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
         try:
             return UUID(item_id) if self.pk_type == UUID else self.pk_type(item_id)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid ID format for {self.pk_type}.")
+            raise HTTPException(status_code=400, detail=f"Invalid ID format for {self.pk_type.__name__}.")
 
     async def create_item(self, item: CreateSchemaType, db: db_dependency):
-        db_item = self.model(**item.dict())
+        db_item = self.model(**item.model_dump())
         db.add(db_item)
         try:
             db.commit()
@@ -82,7 +97,6 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
         return self.response_schema.model_validate(item)
 
     async def read_by_foreign_key(self, fk_name: str, fk_value: str, db: db_dependency):
-        """ Fetch items by a given foreign key column and value """
         model_columns = {column.name: column for column in inspect(self.model).columns}
         if fk_name not in model_columns:
             raise HTTPException(status_code=400,
