@@ -42,21 +42,26 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
 
         self.router.get(f"/{self.base_path}/",
                         response_model=List[response_schema],
+                        status_code=status.HTTP_200_OK,
                         tags=self.tags)(self.read_items)
 
         self.router.get(f"/{self.base_path}/{{item_id}}",
                         response_model=response_schema,
+                        status_code=status.HTTP_200_OK,
                         tags=self.tags)(self.read_item)
 
         self.router.get(f"/{self.base_path}/by-{{fk_name}}/{{fk_value}}",
                         response_model=List[response_schema],
+                        status_code=status.HTTP_200_OK,
                         tags=self.tags)(self.read_by_foreign_key)
 
         self.router.put(f"/{self.base_path}/{{item_id}}",
                         response_model=response_schema,
+                        status_code=status.HTTP_201_CREATED,
                         tags=self.tags)(self.update_item)
 
         self.router.delete(f"/{self.base_path}/{{item_id}}",
+                           status_code=status.HTTP_200_OK,
                            tags=self.tags)(self.delete_item)
 
     def _get_primary_key_info(self):
@@ -75,8 +80,10 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid ID format for {self.pk_type.__name__}.")
 
-    async def create_item(self, item: CreateSchemaType, db: db_dependency):
-        db_item = self.model(**item.model_dump())
+    async def create_item(self,
+                          item: CreateSchemaType,
+                          db: db_dependency):
+        db_item = self.model(**item.model_dump(mode='json'))
         db.add(db_item)
         try:
             db.commit()
@@ -117,7 +124,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
         item = db.query(self.model).filter(getattr(self.model, self.pk_name) == parsed_id).first()
         if not item:
             raise HTTPException(status_code=404, detail=f"{self.model.__name__} not found.")
-        for key, value in updated_item.model_dump().items():
+        for key, value in updated_item.model_dump(mode='json').items():
             setattr(item, key, value)
         try:
             db.commit()
