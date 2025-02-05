@@ -25,11 +25,8 @@ class BondCreate(BondBase):
 class BondResponse(BondBase):
     id: int
 
-    model_config = {
-        "from_attributes": True  # Enable attribute mapping for ORM
-    }
+    model_config = {"from_attributes": True}
 
     @classmethod
-    def from_orm(cls, obj):
+    def from_model(cls, obj):
         return cls.model_validate(obj)
-
