@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from FixedIncome.BondTypeEnum import BondTypeEnum
 from FixedIncome.DayCountConventionEnum import DayCountConventionEnum
 
+
 class BondBase(BaseModel):
     symbol: str
     face_value: float
@@ -19,14 +20,16 @@ class BondBase(BaseModel):
     day_count_convention: DayCountConventionEnum
     settlement_date: Optional[date]
 
+
 class BondCreate(BondBase):
     pass
+
+    class Config:
+        orm_mode = True
+
 
 class BondResponse(BondBase):
     id: int
 
-    model_config = {"from_attributes": True}
-
-    @classmethod
-    def from_model(cls, obj):
-        return cls.model_validate(obj)
+    class Config:
+        orm_mode = True

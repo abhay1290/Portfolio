@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 from Currency.CurrencyEnum import CurrencyEnum
-from Identifier.AssetClassEnum import AssetClassEnum
+
 
 class EquityBase(BaseModel):
     symbol: str
@@ -18,11 +18,12 @@ class EquityBase(BaseModel):
 class EquityCreate(EquityBase):
     pass
 
+    class Config:
+        orm_mode = True
+
+
 class EquityResponse(EquityBase):
     id: int
 
-    model_config = {"from_attributes": True}
-
-    @classmethod
-    def from_model(cls, obj):
-        return cls.model_validate(obj)
+    class Config:
+        orm_mode = True

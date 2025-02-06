@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel
 
 from Currency.CurrencyEnum import CurrencyEnum
@@ -18,11 +17,12 @@ class PortfolioBase(BaseModel):
 class PortfolioCreate(PortfolioBase):
     pass
 
+    class Config:
+        orm_mode = True
+
+
 class PortfolioResponse(PortfolioBase):
     id: int
 
-    model_config = {"from_attributes": True}
-
-    @classmethod
-    def from_model(cls, obj):
-        return cls.model_validate(obj)
+    class Config:
+        orm_mode = True

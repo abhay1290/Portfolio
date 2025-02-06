@@ -4,6 +4,7 @@ from typing import Annotated, Generic, List, Optional, Type, TypeVar
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import inspect
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 ModelType = TypeVar("ModelType")
@@ -110,19 +111,19 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
 
     async def create_item(self, item: CreateSchemaType, db: Session):
         try:
-            db_item = self.model(**item.model_dump(mode='python'))
-            logging.error(f"Creating new item: {db_item}")
+            db_item = self.model(**item.dict())
+            logging.info(f"Creating new item: {db_item}")
             db.add(db_item)
             db.commit()
             db.refresh(db_item)
-            return self.response_schema.model_validate(db_item)
-        # except IntegrityError as e:
-        #     db.rollback()
-        #     logging.error(f"IntegrityError: {str(e)}")
-        #     raise HTTPException(
-        #         status_code=status.HTTP_400_BAD_REQUEST,
-        #         detail="Item violates database constraints.",
-        #     )
+            return self.response_schema.model_validate(db_item, from_attributes=True)
+        except IntegrityError as e:
+            db.rollback()
+            logging.error(f"IntegrityError: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Item violates database constraints.",
+            )
         except Exception as e:
             db.rollback()
             logging.error(f"Unexpected database error: {str(e)}")
@@ -135,10 +136,11 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
             self,
             db: db_dependency,
             skip: int = 0,
-            limit: int = 100,  # Added pagination
+            limit: int = 100,
     ):
         items = db.query(self.model).offset(skip).limit(limit).all()
-        return [self.response_schema.model_validate(item) for item in items]
+        return [self.response_schema.model_validate(item, from_attributes=True) for item in
+                items]  # Added from_attributes
 
     async def read_item(self, item_id: str, db: db_dependency):
         parsed_id = self._parse_item_id(item_id)
@@ -148,7 +150,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"{self.model.__name__} not found.",
             )
-        return self.response_schema.model_validate(item)
+        return self.response_schema.model_validate(item, from_attributes=True)
 
     async def read_by_column(
             self,
@@ -182,7 +184,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
             .limit(limit)
             .all()
         )
-        return [self.response_schema.model_validate(item) for item in items]
+        return [self.response_schema.model_validate(item, from_attributes=True) for item in items]
 
     async def update_item(self, item_id: str, updated_item: CreateSchemaType, db: db_dependency):
         parsed_id = self._parse_item_id(item_id)
@@ -193,7 +195,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
                 detail=f"{self.model.__name__} not found.",
             )
         try:
-            for key, value in updated_item.model_dump(mode='python').items():
+            for key, value in updated_item.dict().items():  # Removed mode='json'
                 setattr(item, key, value)
             db.commit()
             db.refresh(item)
@@ -204,7 +206,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Could not update item.",
             )
-        return self.response_schema.model_validate(item)
+        return self.response_schema.model_validate(item, from_attributes=True)
 
     async def partial_update_item(
             self, item_id: str, updated_item: CreateSchemaType, db: db_dependency
@@ -217,7 +219,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
                 detail=f"{self.model.__name__} not found.",
             )
         try:
-            update_data = updated_item.model_dump(mode='python', exclude_unset=True)
+            update_data = updated_item.dict(exclude_unset=True)  # Removed mode='json'
             for key, value in update_data.items():
                 setattr(item, key, value)
             db.commit()
@@ -229,7 +231,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Could not update item.",
             )
-        return self.response_schema.model_validate(item)
+        return self.response_schema.model_validate(item, from_attributes=True)
 
     async def delete_item(self, item_id: str, db: db_dependency):
         parsed_id = self._parse_item_id(item_id)

@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from CorporateActions.CorporateActionEnum import CorporateActionEnum
 from CorporateActions.StatusEnum import StatusEnum
 from Currency.CurrencyEnum import CurrencyEnum
-from Identifier.AssetClassEnum import AssetClassEnum
+
 
 class CorporateActionBase(BaseModel):
     company_name: str
@@ -21,11 +21,12 @@ class CorporateActionBase(BaseModel):
 class CorporateActionCreate(CorporateActionBase):
     pass
 
+    class Config:
+        orm_mode = True
+
+
 class CorporateActionResponse(CorporateActionBase):
     id: int
 
-    model_config = {"from_attributes": True}
-
-    @classmethod
-    def from_model(cls, obj):
-        return cls.model_validate(obj)
+    class Config:
+        orm_mode = True
