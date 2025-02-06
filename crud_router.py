@@ -110,12 +110,12 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
 
     async def create_item(self, item: CreateSchemaType, db: Session):
         try:
-            db_item = self.model(**item.model_dump(mode='python'))  # Use dict() instead of model_dump
-            logging.error(f"Creating new item: {db_item}")  # Log the item creation
+            db_item = self.model(**item.model_dump(mode='python'))
+            logging.error(f"Creating new item: {db_item}")
             db.add(db_item)
             db.commit()
             db.refresh(db_item)
-            return self.response_schema.model_validate(db_item)  # Use from_orm instead of model_validate
+            return self.response_schema.model_validate(db_item)
         # except IntegrityError as e:
         #     db.rollback()
         #     logging.error(f"IntegrityError: {str(e)}")
@@ -193,7 +193,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
                 detail=f"{self.model.__name__} not found.",
             )
         try:
-            for key, value in updated_item.model_dump(mode='python').items():  # Use dict() instead of model_dump
+            for key, value in updated_item.model_dump(mode='python').items():
                 setattr(item, key, value)
             db.commit()
             db.refresh(item)
@@ -206,7 +206,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
             )
         return self.response_schema.model_validate(item)
 
-    async def partial_update_item(  # New method for PATCH
+    async def partial_update_item(
             self, item_id: str, updated_item: CreateSchemaType, db: db_dependency
     ):
         parsed_id = self._parse_item_id(item_id)
@@ -217,7 +217,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
                 detail=f"{self.model.__name__} not found.",
             )
         try:
-            update_data = updated_item.model_dump(mode='python', exclude_unset=True)  # Use dict() instead of model_dump
+            update_data = updated_item.model_dump(mode='python', exclude_unset=True)
             for key, value in update_data.items():
                 setattr(item, key, value)
             db.commit()
