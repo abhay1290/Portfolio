@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI
 
 from CorporateActions.CorporateAction import CorporateAction
@@ -9,6 +11,14 @@ from FixedIncome.bond_schema import BondCreate, BondResponse
 from Portfolios.Portfolio import Portfolio
 from Portfolios.portfolio_schema import PortfolioCreate, PortfolioResponse
 from crud_router import GenericRouter
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+
+logger = logging.getLogger(__name__)
+logger.info("Logging is enabled!")
 
 app = FastAPI()
 
