@@ -7,6 +7,8 @@ from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+logger = logging.getLogger(__name__)
+
 ModelType = TypeVar("ModelType")
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 ResponseSchemaType = TypeVar("ResponseSchemaType", bound=BaseModel)
@@ -109,24 +111,25 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
                 detail=f"Invalid ID format. Expected {self.pk_type.__name__}.",
             )
 
-    async def create_item(self, item: CreateSchemaType, db: Session):
+    async def create_item(self, db: db_dependency, item: Annotated[CreateSchemaType, Depends()]):
         try:
-            db_item = self.model(**item.dict())
-            logging.info(f"Creating new item: {db_item}")
+            logger.debug(f"Creating new item: {item}")
+            db_item = self.model(**item.model_dump())
+            logger.debug(f"Creating new item: {db_item}")
             db.add(db_item)
             db.commit()
             db.refresh(db_item)
             return self.response_schema.model_validate(db_item, from_attributes=True)
         except IntegrityError as e:
             db.rollback()
-            logging.error(f"IntegrityError: {str(e)}")
+            logger.error(f"IntegrityError: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Item violates database constraints.",
             )
         except Exception as e:
             db.rollback()
-            logging.error(f"Unexpected database error: {str(e)}")
+            logger.error(f"Unexpected database error: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="An unexpected error occurred while creating the item.",
@@ -158,7 +161,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
             value: str,
             db: db_dependency,
             skip: int = 0,
-            limit: int = 100,  # Added pagination
+            limit: int = 100,
     ):
         model_columns = {column.name: column for column in inspect(self.model).columns}
         if column_name not in model_columns:
@@ -195,7 +198,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
                 detail=f"{self.model.__name__} not found.",
             )
         try:
-            for key, value in updated_item.dict().items():  # Removed mode='json'
+            for key, value in updated_item.model_dump().items():
                 setattr(item, key, value)
             db.commit()
             db.refresh(item)
@@ -208,9 +211,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
             )
         return self.response_schema.model_validate(item, from_attributes=True)
 
-    async def partial_update_item(
-            self, item_id: str, updated_item: CreateSchemaType, db: db_dependency
-    ):
+    async def partial_update_item(self, item_id: str, updated_item: CreateSchemaType, db: db_dependency):
         parsed_id = self._parse_item_id(item_id)
         item = db.query(self.model).filter(parsed_id == getattr(self.model, self.pk_name)).first()
         if not item:
@@ -219,7 +220,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
                 detail=f"{self.model.__name__} not found.",
             )
         try:
-            update_data = updated_item.dict(exclude_unset=True)  # Removed mode='json'
+            update_data = updated_item.model_dump(exclude_unset=True)
             for key, value in update_data.items():
                 setattr(item, key, value)
             db.commit()
@@ -227,10 +228,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
         except Exception as e:
             db.rollback()
             logging.error(f"Database error: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Could not update item.",
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Could not update item.")
         return self.response_schema.model_validate(item, from_attributes=True)
 
     async def delete_item(self, item_id: str, db: db_dependency):
