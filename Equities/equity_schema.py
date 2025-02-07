@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from Currency.CurrencyEnum import CurrencyEnum
 
@@ -18,12 +18,8 @@ class EquityBase(BaseModel):
 class EquityCreate(EquityBase):
     pass
 
-    class Config:
-        orm_mode = True
-
 
 class EquityResponse(EquityBase):
     id: int
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

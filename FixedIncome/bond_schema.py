@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from FixedIncome.BondTypeEnum import BondTypeEnum
 from FixedIncome.DayCountConventionEnum import DayCountConventionEnum
@@ -24,12 +24,8 @@ class BondBase(BaseModel):
 class BondCreate(BondBase):
     pass
 
-    class Config:
-        orm_mode = True
-
 
 class BondResponse(BondBase):
     id: int
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

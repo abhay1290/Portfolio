@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from Currency.CurrencyEnum import CurrencyEnum
 from Identifier.AssetClassEnum import AssetClassEnum
@@ -17,12 +17,8 @@ class PortfolioBase(BaseModel):
 class PortfolioCreate(PortfolioBase):
     pass
 
-    class Config:
-        orm_mode = True
-
 
 class PortfolioResponse(PortfolioBase):
     id: int
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
