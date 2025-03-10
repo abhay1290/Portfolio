@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated, Generic, List, Optional, Type, TypeVar
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
@@ -12,6 +12,9 @@ logger = logging.getLogger(__name__)
 ModelType = TypeVar("ModelType")
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 ResponseSchemaType = TypeVar("ResponseSchemaType", bound=BaseModel)
+logger.debug(f"ModelType: {ModelType}")
+logger.debug(f"CreateSchemaType: {CreateSchemaType}")
+logger.debug(f"ResponseSchemaType: {ResponseSchemaType}")
 
 
 def get_db():
@@ -111,15 +114,15 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
                 detail=f"Invalid ID format. Expected {self.pk_type.__name__}.",
             )
 
-    async def create_item(self, db: db_dependency, item: Annotated[CreateSchemaType, Depends()]):
+    async def create_item(self, db: db_dependency, item: Annotated[CreateSchemaType, Body(...)]):
         try:
             logger.debug(f"Creating new item: {item}")
-            db_item = self.model(**item.model_dump())
+            db_item = self.model(**item.model_dump(exclude_unset=True))
             logger.debug(f"Creating new item: {db_item}")
             db.add(db_item)
             db.commit()
             db.refresh(db_item)
-            return self.response_schema.model_validate(db_item, from_attributes=True)
+            return self.response_schema.model_validate(db_item)
         except IntegrityError as e:
             db.rollback()
             logger.error(f"IntegrityError: {str(e)}")
@@ -209,7 +212,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Could not update item.",
             )
-        return self.response_schema.model_validate(item, from_attributes=True)
+        return self.response_schema.model_validate(item)
 
     async def partial_update_item(self, item_id: str, updated_item: CreateSchemaType, db: db_dependency):
         parsed_id = self._parse_item_id(item_id)
@@ -229,7 +232,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
             db.rollback()
             logging.error(f"Database error: {str(e)}")
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Could not update item.")
-        return self.response_schema.model_validate(item, from_attributes=True)
+        return self.response_schema.model_validate(item)
 
     async def delete_item(self, item_id: str, db: db_dependency):
         parsed_id = self._parse_item_id(item_id)

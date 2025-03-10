@@ -1,6 +1,8 @@
 import logging
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from CorporateActions.CorporateAction import CorporateAction
 from CorporateActions.corporate_action_schema import CorporateActionCreate, CorporateActionResponse
@@ -59,6 +61,14 @@ app.include_router(portfolio_router)
 app.include_router(equity_router)
 app.include_router(bond_router)
 app.include_router(corporate_action_router)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": exc.body},
+    )
 
 
 @app.get("/{name}")
