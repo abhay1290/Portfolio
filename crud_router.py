@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated, Generic, List, Optional, Type, TypeVar
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
@@ -46,48 +46,57 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
         self.tags = tags or [self.model.__name__]
         self.pk_name, self.pk_type = self._get_primary_key_info()
 
+        async def create_item_endpoint(db: db_dependency, item: create_schema):
+            return await self.create_item(db, item)
+
         # Define routes
         self.router.post(
             f"/{self.base_path}/",
-            response_model=response_schema,
+            response_model=self.response_schema,
             status_code=status.HTTP_201_CREATED,
             tags=self.tags,
-        )(self.create_item)
+        )(create_item_endpoint)
 
         self.router.get(
             f"/{self.base_path}/",
-            response_model=List[response_schema],
+            response_model=List[self.response_schema],
             status_code=status.HTTP_200_OK,
             tags=self.tags,
         )(self.read_items)
 
         self.router.get(
             f"/{self.base_path}/{{item_id}}",
-            response_model=response_schema,
+            response_model=self.response_schema,
             status_code=status.HTTP_200_OK,
             tags=self.tags,
         )(self.read_item)
 
         self.router.get(
             f"/{self.base_path}/by-{{column_name}}/{{value}}",
-            response_model=List[response_schema],
+            response_model=List[self.response_schema],
             status_code=status.HTTP_200_OK,
             tags=self.tags,
         )(self.read_by_column)
 
+        async def update_item_endpoint(item_id: str, updated_item: create_schema, db: db_dependency):
+            return await self.update_item(item_id, updated_item, db)
+
         self.router.put(
             f"/{self.base_path}/{{item_id}}",
-            response_model=response_schema,
+            response_model=self.response_schema,
             status_code=status.HTTP_200_OK,
             tags=self.tags,
-        )(self.update_item)
+        )(update_item_endpoint)
+
+        async def partial_update_item_endpoint(item_id: str, updated_item: create_schema, db: db_dependency):
+            return await self.partial_update_item(item_id, updated_item, db)
 
         self.router.patch(
             f"/{self.base_path}/{{item_id}}",
-            response_model=response_schema,
+            response_model=self.response_schema,
             status_code=status.HTTP_200_OK,
             tags=self.tags,
-        )(self.partial_update_item)
+        )(partial_update_item_endpoint)
 
         self.router.delete(
             f"/{self.base_path}/{{item_id}}",
@@ -105,20 +114,19 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
         pk_column = pk_columns[0]
         return pk_column.name, pk_column.type.python_type
 
-    def _parse_item_id(self, item_id: str):
+    def _parse_item_id(self, item_id):
         try:
             return self.pk_type(item_id)
         except (ValueError, TypeError):
             raise HTTPException(
-                status_code=400,
-                detail=f"Invalid ID format. Expected {self.pk_type.__name__}.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid ID format. Expected {self.pk_type.__name__}."
             )
 
-    async def create_item(self, db: db_dependency, item: Annotated[CreateSchemaType, Body(...)]):
+    async def create_item(self, db: db_dependency, item: CreateSchemaType):
+        """Ensures that the request model is properly recognized in OpenAPI"""
         try:
-            logger.debug(f"Creating new item: {item}")
             db_item = self.model(**item.model_dump(exclude_unset=True))
-            logger.debug(f"Creating new item: {db_item}")
             db.add(db_item)
             db.commit()
             db.refresh(db_item)
@@ -185,7 +193,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
 
         items = (
             db.query(self.model)
-            .filter(parsed_value == column)
+            .filter(column == parsed_value)
             .offset(skip)
             .limit(limit)
             .all()
@@ -223,7 +231,7 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
                 detail=f"{self.model.__name__} not found.",
             )
         try:
-            update_data = updated_item.model_dump(exclude_unset=True)
+            update_data = updated_item.model_dump(exclude_unset=True, exclude_defaults=True)
             for key, value in update_data.items():
                 setattr(item, key, value)
             db.commit()

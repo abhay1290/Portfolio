@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, Date, Float, Integer, String, Enum
+from sqlalchemy import Column, Date, Enum, Float, Integer, String
 
 from Database.database import Base
 from FixedIncome.BondTypeEnum import BondTypeEnum
@@ -26,16 +26,12 @@ class Bond(Base):
     day_count_convention = Column(Enum(DayCountConventionEnum), nullable=False)
     settlement_date = Column(Date, nullable=True)
 
-    # issuer =
-    # issuer_type =
     credit_rating = Column(String(10), nullable=True)
 
-
-
-    def __init__(self, symbol: SecurityIdentifier, face_value: float, coupon_rate: float, maturity_date: datetime, issue_date: datetime,
+    def __init__(self, symbol: SecurityIdentifier, face_value: float, coupon_rate: float, maturity_date: datetime,
+                 issue_date: datetime,
                  market_price: float, bond_type: BondTypeEnum, frequency: float, credit_rating: str,
-                 day_count_convention: DayCountConventionEnum, settlement_date: str):
-
+                 day_count_convention: DayCountConventionEnum, settlement_date: datetime):
         self.symbol = str(symbol)
         self.face_value = face_value
         self.coupon_rate = coupon_rate
@@ -46,4 +42,4 @@ class Bond(Base):
         self.frequency = frequency
         self.credit_rating = credit_rating
         self.day_count_convention = day_count_convention
-        self.settlement_date = datetime.strptime(settlement_date, "%Y-%m-%d")
+        self.settlement_date = settlement_date
