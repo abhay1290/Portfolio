@@ -124,7 +124,6 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
             )
 
     async def create_item(self, db: db_dependency, item: CreateSchemaType):
-        """Ensures that the request model is properly recognized in OpenAPI"""
         try:
             db_item = self.model(**item.model_dump(exclude_unset=True))
             db.add(db_item)
