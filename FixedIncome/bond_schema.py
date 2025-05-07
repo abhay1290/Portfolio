@@ -4,6 +4,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 from FixedIncome.BondTypeEnum import BondTypeEnum
+from FixedIncome.CouponFrequencyEnum import CouponFrequencyEnum
 from FixedIncome.DayCountConventionEnum import DayCountConventionEnum
 
 
@@ -15,7 +16,7 @@ class BondBase(BaseModel):
     issue_date: date
     market_price: float
     bond_type: BondTypeEnum
-    frequency: float
+    frequency: CouponFrequencyEnum
     credit_rating: Optional[str]
     day_count_convention: DayCountConventionEnum
     settlement_date: Optional[date]
