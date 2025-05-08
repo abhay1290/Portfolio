@@ -3,9 +3,9 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
-from FixedIncome.BondTypeEnum import BondTypeEnum
-from FixedIncome.CouponFrequencyEnum import CouponFrequencyEnum
-from FixedIncome.DayCountConventionEnum import DayCountConventionEnum
+from FixedIncome.enums.BondTypeEnum import BondTypeEnum
+from FixedIncome.enums.CouponFrequencyEnum import CouponFrequencyEnum
+from FixedIncome.enums.DayCountConventionEnum import DayCountConventionEnum
 
 
 class BondBase(BaseModel):

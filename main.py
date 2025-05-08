@@ -9,7 +9,7 @@ from CorporateActions.corporate_action_schema import CorporateActionCreate, Corp
 from Equities.Equity import Equity
 from Equities.equity_schema import EquityCreate, EquityResponse
 from FixedIncome.Bond import Bond
-from FixedIncome.bond_schema import BondCreate, BondResponse
+from FixedIncome.api.bond_schema import BondCreate, BondResponse
 from Portfolios.Portfolio import Portfolio
 from Portfolios.portfolio_schema import PortfolioCreate, PortfolioResponse
 from crud_router import GenericRouter

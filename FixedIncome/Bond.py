@@ -3,9 +3,9 @@ from datetime import datetime
 from sqlalchemy import Column, Date, Enum, Float, Integer, String
 
 from Database.database import Base
-from FixedIncome import CouponFrequencyEnum
-from FixedIncome.BondTypeEnum import BondTypeEnum
-from FixedIncome.DayCountConventionEnum import DayCountConventionEnum
+from FixedIncome.enums import CouponFrequencyEnum
+from FixedIncome.enums.BondTypeEnum import BondTypeEnum
+from FixedIncome.enums.DayCountConventionEnum import DayCountConventionEnum
 from Identifier.SecurityIdentifier import SecurityIdentifier
 
 
