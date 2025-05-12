@@ -1,9 +1,10 @@
 from enum import Enum
 
 
-class BondTypeEnum(Enum):
-    FLOATING = "Floating"
-    ZERO_COUPON = "Zero Coupon"
-    FIXED_COUPON = "Fixed Coupon"
-    CALLABLE = "Callable"
-    PUTABLE = "Putable"
+class BondTypeEnum(str, Enum):
+    ZERO_COUPON = "ZERO_COUPON"
+    FIXED_COUPON = "FIXED_COUPON"
+    FLOATING = "FLOATING"
+    CALLABLE = "CALLABLE"
+    PUTABLE = "PUTABLE"
+    SINKING_FUND = "SINKING_FUND"

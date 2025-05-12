@@ -137,7 +137,8 @@ class PutableBondAnalytics(BondAnalyticsBase):
     def cashflows(self) -> List[Tuple[date, float]]:
         """Returns all future cashflows as (date, amount) tuples"""
         bond = self.build_quantlib_bond()
-        return [(cf.date(), cf.amount()) for cf in bond.cashflows()]
+        return [(cf.date(), cf.amount()) for cf in bond.cashflows() if
+                cf.date() >= self.settlement_date and cf.amount() > 0]
 
     def clean_price(self) -> float:
         """Returns the clean price using QuantLib's pricing engine"""

@@ -7,7 +7,9 @@ from FixedIncome.enums.DayCountConventionEnum import DayCountConventionEnum
 
 
 class BondBase(Base):
-    __abstract__ = True
+    # __abstract__ = True
+
+    __tablename__ = 'bonds'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 

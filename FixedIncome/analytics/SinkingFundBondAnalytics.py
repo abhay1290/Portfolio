@@ -1,22 +1,22 @@
 import logging
 import math
-from datetime import date
+from datetime import date, datetime
 from typing import Dict, List, Tuple
 
-from QuantLib import (Annual, BondFunctions, Compounded, DateGeneration, Days, DiscountingBondEngine, Duration,
-                      FixedRateBond, FlatForward,
-                      Months, Period, QuoteHandle, Schedule, Settings, Simple, SimpleQuote, YieldTermStructureHandle)
+from QuantLib import (AmortizingFixedRateBond, Annual, BondFunctions, Compounded, Date, DateGeneration, DateVector,
+                      Days, DiscountingBondEngine, Duration, FlatForward, Months, Period, QuoteHandle, Schedule,
+                      Settings,
+                      Simple, SimpleQuote, YieldTermStructureHandle)
 
-from FixedIncome.analytics.BondAnalyticsFactory import BondAnalyticsBase
-from FixedIncome.model.FixedRateBondModel import FixedRateBondModel
+from FixedIncome.analytics.BondAnalyticsBase import BondAnalyticsBase
+from FixedIncome.model.SinkingFundBondModel import SinkingFundBondModel
 
 
-class FixedRateBondAnalytics(BondAnalyticsBase):
-    def __init__(self, bond: FixedRateBondModel):
+class SinkingFundBondAnalytics(BondAnalyticsBase):
+    def __init__(self, bond: SinkingFundBondModel):
         super().__init__(bond)
-
-        if not isinstance(bond, FixedRateBondModel):
-            raise ValueError("Must provide a FixedRateBondModel instance")
+        if not isinstance(bond, SinkingFundBondModel):
+            raise ValueError("Must provide a SinkingFundBondModel instance")
 
         # Adjust settlement date if it's a holiday
         self._adjust_settlement_date_for_holidays()
@@ -32,6 +32,9 @@ class FixedRateBondAnalytics(BondAnalyticsBase):
         self.coupon_rate = bond.coupon_rate
         self.coupon_frequency = bond.coupon_frequency
         self.schedule = None
+
+        self.notionals_amounts = None
+        self.notionals_dates = None
 
     def _adjust_settlement_date_for_holidays(self):
         """
@@ -83,19 +86,78 @@ class FixedRateBondAnalytics(BondAnalyticsBase):
             False
         )
 
-    def build_quantlib_bond(self) -> FixedRateBond:
-        """Lazily construct and return the QuantLib FixedRateBond object"""
+    def _build_notionals_schedule(self) -> tuple[list[float], DateVector]:
+        """
+        Constructs the notional schedule for a sinking fund bond.
+
+        Returns:
+            tuple: (notional_amounts: list[float], notional_dates: QuantLib.DateVector)
+        """
+        if not self._bond.notionals_schedule:
+            raise ValueError("Notionals schedule is missing.")
+
+        # Sort schedule by date (optional, ensures chronological order)
+        schedule = sorted(self._bond.notionals_schedule, key=lambda x: x['date'])
+
+        notional_amounts = []
+        notional_dates = DateVector()
+
+        for entry in schedule:
+            try:
+                iso_date = entry['date']
+                notional = entry['notional']
+                ql_date = Date.from_date(datetime.strptime(iso_date, "%Y-%m-%d").date())
+            except Exception as e:
+                raise ValueError(f"Invalid notional schedule entry: {entry} | Error: {e}")
+
+            notional_amounts.append(float(notional))
+            notional_dates.append(ql_date)
+
+        return notional_amounts, notional_dates
+
+    def _validate_and_align_notionals_with_schedule(self) -> list[float]:
+        """
+        Validates and aligns notionals with the bond's coupon schedule.
+
+        Ensures that the number of notionals matches the number of periods in the schedule.
+        Raises an error if notional dates do not match coupon dates.
+
+        Returns:
+            A list of notionals aligned with schedule periods (one per period).
+        """
+        schedule_dates = [self.schedule.date(i) for i in range(1, self.schedule.size())]
+        if len(self.notionals_dates) != len(schedule_dates):
+            raise ValueError(
+                f"Mismatch between notional schedule ({len(self.notionals_dates)}) "
+                f"and bond schedule periods ({len(schedule_dates)})."
+            )
+
+        for i, (notional_date, sched_date) in enumerate(zip(self.notionals_dates, schedule_dates)):
+            if notional_date != sched_date:
+                raise ValueError(
+                    f"Notional date at index {i} ({notional_date}) does not match "
+                    f"schedule date ({sched_date})."
+                )
+
+        return self.notionals_amounts
+
+    def build_quantlib_bond(self) -> AmortizingFixedRateBond:
         if self.schedule is None:
             self.schedule = self._build_coupon_schedule()
 
+        if self.notionals_dates is None:
+            self.notionals_amounts, self.notionals_dates = self._build_notionals_schedule()
+
         if self._bond is None:
-            # Create bond instrument
-            self._bond = FixedRateBond(
+            if len(self.notionals_dates) != len(self.schedule) - 1:
+                raise ValueError("Mismatch between schedule and notionals")
+
+            self._bond = AmortizingFixedRateBond(
                 settlementDays=self.settlement_days,
-                faceAmount=self.face_value,
+                notionals=self._validate_and_align_notionals_with_schedule(),
                 schedule=self.schedule,
                 coupons=[self.coupon_rate],
-                paymentDayCounter=self.day_count_convention,
+                accrualDayCounter=self.day_count_convention,
                 paymentConvention=self.convention,
                 redemption=100.0,
                 issueDate=self.issue_date,

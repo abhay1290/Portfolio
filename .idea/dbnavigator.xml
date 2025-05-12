@@ -9,15 +9,21 @@
     <value-preview-text-wrapping value="true" />
     <value-preview-pinned value="false" />
   </component>
+  <component name="DBNavigator.Project.DatabaseAssistantManager">
+    <assistants />
+  </component>
   <component name="DBNavigator.Project.DatabaseBrowserManager">
     <autoscroll-to-editor value="false" />
     <autoscroll-from-editor value="true" />
-    <show-object-properties value="true" />
+    <show-object-properties value="false" />
     <loaded-nodes />
   </component>
   <component name="DBNavigator.Project.DatabaseConsoleManager">
     <connection id="c60234c3-0139-4afa-b454-3b1189c88dcb">
       <console name="Connection" type="STANDARD" schema="" session="Main" />
+    </connection>
+    <connection id="bc545228-6b36-41e9-8308-3e53eb635bb0">
+      <console name="Connection 1" type="STANDARD" schema="postgres" session="Main" />
     </connection>
   </component>
   <component name="DBNavigator.Project.DatabaseEditorStateManager">
@@ -53,7 +59,10 @@
           <tns-profile value="" />
           <type value="USER_PASSWORD" />
           <user value="postgres" />
-          <deprecated-pwd value="SGlwcE8xMjkw" />
+          <token-type value="" />
+          <token-config-file value="" />
+          <token-profile value="" />
+          <session-user value="postgres" />
         </database>
         <properties>
           <auto-commit value="true" />
@@ -63,10 +72,8 @@
           <proxy-host value="" />
           <proxy-port value="22" />
           <proxy-user value="" />
-          <deprecated-proxy-pwd value="" />
           <auth-type value="PASSWORD" />
           <key-file value="" />
-          <key-passphrase value="" />
         </ssh-settings>
         <ssl-settings>
           <active value="false" />
@@ -123,9 +130,116 @@
             <object-type name="TYPE" enabled="true" />
             <object-type name="TYPE_ATTRIBUTE" enabled="true" />
             <object-type name="ARGUMENT" enabled="true" />
+            <object-type name="JAVA_CLASS" enabled="true" />
+            <object-type name="JAVA_INNER_CLASS" enabled="true" />
+            <object-type name="JAVA_FIELD" enabled="true" />
+            <object-type name="JAVA_METHOD" enabled="true" />
             <object-type name="DIMENSION" enabled="true" />
             <object-type name="CLUSTER" enabled="true" />
             <object-type name="DBLINK" enabled="true" />
+            <object-type name="CREDENTIAL" enabled="true" />
+            <object-type name="AI_PROFILE" enabled="true" />
+          </object-type-filter>
+        </object-filters>
+      </connection>
+      <connection id="bc545228-6b36-41e9-8308-3e53eb635bb0" active="true" signed="true">
+        <database>
+          <name value="Connection 1" />
+          <description value="" />
+          <database-type value="POSTGRES" />
+          <config-type value="BASIC" />
+          <database-version value="17.2" />
+          <driver-source value="BUNDLED" />
+          <driver-library value="" />
+          <driver value="" />
+          <url-type value="DATABASE" />
+          <host value="localhost" />
+          <port value="4200" />
+          <database value="postgres" />
+          <tns-folder value="" />
+          <tns-profile value="" />
+          <type value="USER_PASSWORD" />
+          <user value="postgres" />
+          <token-type value="" />
+          <token-config-file value="" />
+          <token-profile value="" />
+          <session-user value="postgres" />
+        </database>
+        <properties>
+          <auto-commit value="false" />
+        </properties>
+        <ssh-settings>
+          <active value="false" />
+          <proxy-host value="" />
+          <proxy-port value="22" />
+          <proxy-user value="" />
+          <auth-type value="PASSWORD" />
+          <key-file value="" />
+        </ssh-settings>
+        <ssl-settings>
+          <active value="false" />
+          <certificate-authority-file value="" />
+          <client-certificate-file value="" />
+          <client-key-file value="" />
+        </ssl-settings>
+        <details>
+          <charset value="UTF-8" />
+          <session-management value="true" />
+          <ddl-file-binding value="true" />
+          <database-logging value="true" />
+          <connect-automatically value="true" />
+          <restore-workspace value="true" />
+          <restore-workspace-deep value="false" />
+          <environment-type value="default" />
+          <connectivity-timeout value="30" />
+          <idle-time-to-disconnect value="30" />
+          <idle-time-to-disconnect-pool value="5" />
+          <credential-expiry-time value="10" />
+          <max-connection-pool-size value="7" />
+          <alternative-statement-delimiter value="" />
+        </details>
+        <debugger>
+          <compile-dependencies value="true" />
+          <tcp-driver-tunneling value="false" />
+          <tcp-host-address value="" />
+          <tcp-port-from value="4000" />
+          <tcp-port-to value="4999" />
+          <debugger-type value="JDBC" />
+        </debugger>
+        <object-filters hide-empty-schemas="false" hide-pseudo-columns="false" hide-audit-columns="false">
+          <object-filters />
+          <object-type-filter use-master-settings="true">
+            <object-type name="SCHEMA" enabled="true" />
+            <object-type name="USER" enabled="true" />
+            <object-type name="ROLE" enabled="true" />
+            <object-type name="PRIVILEGE" enabled="true" />
+            <object-type name="CHARSET" enabled="true" />
+            <object-type name="TABLE" enabled="true" />
+            <object-type name="VIEW" enabled="true" />
+            <object-type name="MATERIALIZED_VIEW" enabled="true" />
+            <object-type name="NESTED_TABLE" enabled="true" />
+            <object-type name="COLUMN" enabled="true" />
+            <object-type name="INDEX" enabled="true" />
+            <object-type name="CONSTRAINT" enabled="true" />
+            <object-type name="DATASET_TRIGGER" enabled="true" />
+            <object-type name="DATABASE_TRIGGER" enabled="true" />
+            <object-type name="SYNONYM" enabled="true" />
+            <object-type name="SEQUENCE" enabled="true" />
+            <object-type name="PROCEDURE" enabled="true" />
+            <object-type name="FUNCTION" enabled="true" />
+            <object-type name="PACKAGE" enabled="true" />
+            <object-type name="TYPE" enabled="true" />
+            <object-type name="TYPE_ATTRIBUTE" enabled="true" />
+            <object-type name="ARGUMENT" enabled="true" />
+            <object-type name="JAVA_CLASS" enabled="true" />
+            <object-type name="JAVA_INNER_CLASS" enabled="true" />
+            <object-type name="JAVA_FIELD" enabled="true" />
+            <object-type name="JAVA_METHOD" enabled="true" />
+            <object-type name="DIMENSION" enabled="true" />
+            <object-type name="CLUSTER" enabled="true" />
+            <object-type name="DBLINK" enabled="true" />
+            <object-type name="CREDENTIAL" enabled="true" />
+            <object-type name="AI_PROFILE" enabled="true" />
           </object-type-filter>
         </object-filters>
       </connection>
@@ -161,9 +275,15 @@
           <object-type name="TYPE" enabled="true" />
           <object-type name="TYPE_ATTRIBUTE" enabled="true" />
           <object-type name="ARGUMENT" enabled="true" />
+          <object-type name="JAVA_CLASS" enabled="true" />
+          <object-type name="JAVA_INNER_CLASS" enabled="true" />
+          <object-type name="JAVA_FIELD" enabled="true" />
+          <object-type name="JAVA_METHOD" enabled="true" />
           <object-type name="DIMENSION" enabled="true" />
           <object-type name="CLUSTER" enabled="true" />
           <object-type name="DBLINK" enabled="true" />
+          <object-type name="CREDENTIAL" enabled="true" />
+          <object-type name="AI_PROFILE" enabled="true" />
         </object-type-filter>
       </filters>
       <sorting>
@@ -200,9 +320,15 @@
           <object-type name="FUNCTION" enabled="true" />
           <object-type name="PACKAGE" enabled="true" />
           <object-type name="TYPE" enabled="true" />
+          <object-type name="JAVA CLASS" enabled="true" />
+          <object-type name="INNER CLASS" enabled="true" />
+          <object-type name="JAVA FIELD" enabled="true" />
+          <object-type name="JAVA METHOD" enabled="true" />
+          <object-type name="JAVA PARAMETER" enabled="true" />
           <object-type name="DIMENSION" enabled="false" />
           <object-type name="CLUSTER" enabled="false" />
           <object-type name="DBLINK" enabled="true" />
+          <object-type name="CREDENTIAL" enabled="false" />
         </lookup-objects>
         <force-database-load value="true" />
         <prompt-connection-selection value="true" />
@@ -489,6 +615,7 @@
         <mapping file-type-id="TYPE" extensions="tpe" />
         <mapping file-type-id="TYPE_SPEC" extensions="tps" />
         <mapping file-type-id="TYPE_BODY" extensions="tpb" />
+        <mapping file-type-id="JAVA_SOURCE" extensions="sql" />
       </extensions>
       <general>
         <lookup-ddl-files value="true" />
@@ -498,6 +625,11 @@
         <make-scripts-rerunnable value="true" />
       </general>
     </ddl-file-settings>
+    <assistant-settings>
+      <credential-settings>
+        <credentials />
+      </credential-settings>
+    </assistant-settings>
     <general-settings>
       <regional-settings>
         <date-format value="MEDIUM" />
@@ -521,12 +653,6 @@
         </visibility-settings>
       </environment>
     </general-settings>
-    <mybatis-settings>
-      <generator-filters>
-        <initConfigMap />
-        <historyConfigMap />
-      </generator-filters>
-    </mybatis-settings>
   </component>
   <component name="DBNavigator.Project.StatementExecutionManager">
     <execution-variables />

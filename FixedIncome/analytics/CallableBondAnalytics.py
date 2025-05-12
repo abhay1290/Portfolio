@@ -125,7 +125,7 @@ class CallableBondAnalytics(BondAnalyticsBase):
 
             # Set pricing engine with the properly constructed discount curve
             model = HullWhite(self._discount_curve)
-            
+
             years_to_maturity = self._discount_curve.referenceDate().yearFraction(self.maturity_date)
             time_grid = TimeGrid(years_to_maturity, 100)
 
@@ -137,7 +137,8 @@ class CallableBondAnalytics(BondAnalyticsBase):
     def cashflows(self) -> List[Tuple[date, float]]:
         """Returns all future cashflows as (date, amount) tuples"""
         bond = self.build_quantlib_bond()
-        return [(cf.date(), cf.amount()) for cf in bond.cashflows()]
+        return [(cf.date(), cf.amount()) for cf in bond.cashflows() if
+                cf.date() >= self.settlement_date and cf.amount() > 0]
 
     def clean_price(self) -> float:
         """Returns the clean price using QuantLib's pricing engine"""

@@ -1,6 +1,7 @@
 from enum import Enum
 
-class DayCountConventionEnum(Enum):
-    ACTUAL_360 = "Actual/360"
-    ACTUAL_365 = "Actual/365"
-    THIRTY_360 = "30/360"
+
+class DayCountConventionEnum(str, Enum):
+    ACTUAL_360 = "ACTUAL_360"
+    ACTUAL_365 = "ACTUAL_365"
+    THIRTY_360 = "THIRTY_360"
