@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from Currency.CurrencyEnum import CurrencyEnum
 from FixedIncome.enums.BondTypeEnum import BondTypeEnum
+from FixedIncome.enums.BusinessDayConventionEnum import BusinessDayConventionEnum
 from FixedIncome.enums.CalenderEnum import CalendarEnum
 from FixedIncome.enums.CompoundingEnum import CompoundingEnum
 from FixedIncome.enums.DayCountConventionEnum import DayCountConventionEnum
@@ -20,9 +21,11 @@ class BondBaseRequest(BaseModel):
     # Dates
     issue_date: date = Field(..., description="Date bond was issued")
     maturity_date: date = Field(..., description="Bond maturity date")
-    evaluation_date: date = Field(..., description="Valuation date/Pricing date")
+    evaluation_date: date = Field(..., description="Valuation date/as-of date")
     settlement_days: int = Field(default=2, ge=0, description="Days after eval date for settlement")
     calendar: CalendarEnum = Field(default=CalendarEnum.TARGET, description="Calender followed to find business days")
+    business_day_convention: BusinessDayConventionEnum = Field(default=BusinessDayConventionEnum.FOLLOWING,
+                                                               description="Business day adjustment convention")
 
     # Pricing
     face_value: float = Field(default=100.00, gt=0, description="Par value of bond")

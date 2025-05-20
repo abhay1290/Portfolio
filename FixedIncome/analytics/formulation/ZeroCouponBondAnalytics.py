@@ -3,90 +3,103 @@ import math
 from datetime import date, date as pydate
 from typing import Dict, List, Optional, Tuple
 
-from QuantLib import (Annual, BondFunctions, Compounded, Date, Days, DiscountingBondEngine, Duration, FlatForward,
-                      QuoteHandle, Settings, Simple, SimpleQuote, YieldTermStructureHandle, ZeroCouponBond)
+from QuantLib import (BondFunctions, Days, DiscountingBondEngine, Duration, FlatForward,
+                      Period, QuoteHandle, Settings, Simple, SimpleQuote, YieldTermStructureHandle, ZeroCouponBond)
 
 from FixedIncome.analytics.BondAnalyticsFactory import BondAnalyticsBase
 from FixedIncome.analytics.utils.helpers import replace_nan_with_none
-from FixedIncome.analytics.utils.quantlib_helpers import from_ql_date, next_business_day, to_ql_date
+from FixedIncome.analytics.utils.quantlib_mapper import from_ql_date, to_ql_date
 from FixedIncome.model.ZeroCouponBondModel import ZeroCouponBondModel
 
 
 class ZeroCouponBondAnalytics(BondAnalyticsBase):
     def __init__(self, bond: ZeroCouponBondModel):
         super().__init__(bond)
-        self._summary_cache = None
 
         if not isinstance(bond, ZeroCouponBondModel):
             raise ValueError("Must provide a ZeroCouponBondModel instance")
 
-        # Set evaluation date to today
-        # TODO make it an input
-        Settings.instance().evaluationDate = Date.todaysDate()
+        self._summary_cache = None
 
         self._bond: Optional[ZeroCouponBond] = None
         self._discount_curve: Optional[YieldTermStructureHandle] = None
         self._rate_quote: Optional[SimpleQuote] = None
 
+        # Adjust dates to business days
+        self._adjust_dates()
+
+        # Global declaration to anchor the calculation point(valuation_date/as_of_date)
+        self._set_eval_date_and_settlement_date()
         self._validate_inputs()
-        self._adjust_settlement_date_for_holidays()
 
-    def _adjust_settlement_date_for_holidays(self):
-        original_settlement = to_ql_date(self.settlement_date)
-        adjusted_settlement = next_business_day(original_settlement, self.calendar)
+    def _adjust_dates(self) -> None:
+        """Adjust all relevant dates according to calendar and business day convention."""
+        self.evaluation_date = self.calendar.adjust(self.evaluation_date, self.business_day_convention)
+        self.maturity_date = self.calendar.adjust(self.maturity_date, self.business_day_convention)
 
-        if adjusted_settlement != original_settlement:
-            logging.info(
-                f"Settlement date adjusted from {from_ql_date(original_settlement)} to {from_ql_date(adjusted_settlement)} due to holiday.")
+    def _validate_inputs(self) -> None:
+        """Validate bond parameters with more comprehensive checks."""
+        if not isinstance(self.settlement_days, int) or self.settlement_days < 0:
+            raise ValueError("Settlement days must be a non-negative integer")
 
-        self.settlement_date = adjusted_settlement
-
-    def _adjust_maturity_date_for_holidays(self):
-        original_maturity = to_ql_date(self.maturity_date)
-        adjusted_maturity = next_business_day(original_maturity, self.calendar)
-
-        if adjusted_maturity != original_maturity:
-            logging.info(
-                f"Maturity date adjusted from {from_ql_date(original_maturity)} to {from_ql_date(adjusted_maturity)} due to holiday.")
-
-        self.maturity_date = adjusted_maturity
-
-    def _validate_inputs(self):
         if self.maturity_date <= self.issue_date:
             raise ValueError("Maturity date must be after issue date.")
-        if self.face_value <= 0:
-            raise ValueError("Face value must be positive.")
-        if to_ql_date(self.settlement_date) < self.issue_date:
+
+        if self.settlement_date < self.issue_date:
             raise ValueError("Settlement date cannot be before issue date.")
 
+        if self.face_value <= 0:
+            raise ValueError("Face value must be positive.")
+
+        if self.evaluation_date > self.maturity_date:
+            raise ValueError("Evaluation date is after maturity date.")
+
+    def _set_eval_date_and_settlement_date(self):
+        Settings.instance().evaluationDate = self.evaluation_date
+        self.settlement_date = self.calendar.advance(self.evaluation_date, self.settlement_days, Days)
+        self.settlement_date = self.calendar.adjust(self.settlement_date, self.business_day_convention)
+
+    def _get_normalized_market_price(self) -> float:
+        """Returns market price normalized to 100 face value."""
+        market_price = getattr(self, 'market_price', None)
+        if market_price is None:
+            logging.warning("Market price not set, using clean price as fallback.")
+            market_price = self.clean_price()
+        if self.face_value == 0:
+            raise ZeroDivisionError("Face value cannot be zero when normalizing price.")
+        return (market_price / self.face_value) * 100
+
+    # Yield curves must be anchored to the EVALUATION DATE
     def _build_yield_curve(self, initial_rate: float = 0.05) -> Tuple[YieldTermStructureHandle, SimpleQuote]:
         flat_rate = SimpleQuote(initial_rate)
         curve = FlatForward(
-            self.settlement_date,
+            self.evaluation_date,
             QuoteHandle(flat_rate),
             self.day_count_convention,
-            Compounded,
-            Annual
+            self.compounding,
+            self.frequency
         )
+
+        curve.enableExtrapolation()  # Allow extrapolation beyond curve dates
         return YieldTermStructureHandle(curve), flat_rate
 
     def build_quantlib_bond(self) -> ZeroCouponBond:
         if self._bond is None:
-
             self._bond = ZeroCouponBond(
                 settlementDays=self.settlement_days,
                 calendar=self.calendar,
                 faceAmount=self.face_value,
                 maturityDate=self.maturity_date,
-                paymentConvention=self.convention,
+                paymentConvention=self.business_day_convention,
                 redemption=100.0,
                 issueDate=self.issue_date
             )
 
-            if self._discount_curve is None or self._rate_quote is None:
-                self._discount_curve, self._rate_quote = self._build_yield_curve()
+        if self._discount_curve is None or self._rate_quote is None:
+            self._discount_curve, self._rate_quote = self._build_yield_curve()
 
-            self._bond.setPricingEngine(DiscountingBondEngine(self._discount_curve))
+        engine = DiscountingBondEngine(self._discount_curve)
+        self._bond.setPricingEngine(engine)
 
         return self._bond
 
@@ -126,16 +139,12 @@ class ZeroCouponBondAnalytics(BondAnalyticsBase):
 
     def yield_to_maturity(self) -> float:
         try:
-            market_price = getattr(self, 'market_price', None)
-            if market_price is None:
-                logging.warning("Market price not set, using clean price as fallback.")
-                market_price = self.clean_price()
-
+            normalized_price = self._get_normalized_market_price()
             return self.build_quantlib_bond().bondYield(
-                market_price,
+                normalized_price,
                 self.day_count_convention,
-                Compounded,
-                Annual,
+                self.compounding,
+                self.frequency,
                 self.settlement_date
             )
         except Exception as e:
@@ -154,8 +163,8 @@ class ZeroCouponBondAnalytics(BondAnalyticsBase):
                 self.build_quantlib_bond(),
                 ytm,
                 self.day_count_convention,
-                Compounded,
-                Annual,
+                self.compounding,
+                self.frequency,
                 Duration.Modified,
                 self.settlement_date
             )
@@ -172,8 +181,8 @@ class ZeroCouponBondAnalytics(BondAnalyticsBase):
                 self.build_quantlib_bond(),
                 ytm,
                 self.day_count_convention,
-                Compounded,
-                Annual,
+                self.compounding,
+                self.frequency,
                 Duration.Macaulay,
                 self.settlement_date
             )
@@ -191,7 +200,7 @@ class ZeroCouponBondAnalytics(BondAnalyticsBase):
                 ytm,
                 self.day_count_convention,
                 Simple,
-                Annual,
+                self.frequency,
                 Duration.Simple,
                 self.settlement_date
             )
@@ -208,8 +217,8 @@ class ZeroCouponBondAnalytics(BondAnalyticsBase):
                 self.build_quantlib_bond(),
                 ytm,
                 self.day_count_convention,
-                Compounded,
-                Annual,
+                self.compounding,
+                self.frequency,
                 self.settlement_date
             )
         except Exception as e:
@@ -223,17 +232,21 @@ class ZeroCouponBondAnalytics(BondAnalyticsBase):
                 return float('nan')
 
             bond = self.build_quantlib_bond()
-            price_up = BondFunctions.cleanPrice(bond, ytm + bump_size, self.day_count_convention, Compounded, Annual,
-                                                self.settlement_date)
-            price_down = BondFunctions.cleanPrice(bond, ytm - bump_size, self.day_count_convention, Compounded, Annual,
-                                                  self.settlement_date)
+            price_up = BondFunctions.cleanPrice(
+                bond, ytm + bump_size, self.day_count_convention, self.compounding,
+                self.frequency, self.settlement_date
+            )
+            price_down = BondFunctions.cleanPrice(
+                bond, ytm - bump_size, self.day_count_convention, self.compounding,
+                self.frequency, self.settlement_date
+            )
 
             return (price_down - price_up) / (2 * bump_size)
         except Exception as e:
             logging.error(f"DV01 calculation failed: {str(e)}")
             return float('nan')
 
-    def get_discount_curve(self, start=None, end=None, frequency_days=365) -> Dict[str, float]:
+    def get_discount_curve(self, start=None, end=None, points=20) -> Dict[str, float]:
         try:
             if self._discount_curve is None:
                 self.build_quantlib_bond()
@@ -241,23 +254,44 @@ class ZeroCouponBondAnalytics(BondAnalyticsBase):
             curve = self._discount_curve.currentLink()
             calendar = self.calendar
             day_counter = self.day_count_convention
+            compounding = self.compounding
+            frequency = self.frequency
 
-            start = to_ql_date(self.issue_date) or to_ql_date(start)
-            end = to_ql_date(self.maturity_date) or to_ql_date(end)
+            ql_start = to_ql_date(start or self.evaluation_date)
+            ql_end = to_ql_date(end or self.maturity_date)
 
-            if start > end:
+            if ql_start > ql_end:
                 raise ValueError("Start date must be before end date")
 
+            # Calculate the total period in years according to day count convention
+            total_years = day_counter.yearFraction(ql_start, ql_end)
+
+            # Calculate step size in years
+            step_years = total_years / (points - 1)
+
             result = {}
-            current = start
-            while current <= end:
-                rate = curve.zeroRate(current, day_counter, Compounded, Annual).rate()
-                result[current.isoformat()] = rate
-                current = calendar.advance(current, frequency_days, Days)
+            current = ql_start
+
+            for i in range(points):
+                if i == points - 1:  # Ensure we always include the end date
+                    current = ql_end
+
+                rate = curve.zeroRate(current, day_counter, compounding, frequency).rate()
+                result[from_ql_date(current)] = rate
+
+                # Advance using calendar and business day convention
+                if i < points - 2:  # Don't advance after the second-to-last point
+                    current = calendar.advance(
+                        current,
+                        Period(int(round(step_years * 365)), Days),
+                        self.business_day_convention
+                    )
+                    current = min(current, ql_end)  # Don't go past end date
 
             return result
+
         except Exception as e:
-            logging.error(f"Discount curve generation failed: {str(e)}")
+            logging.error(f"Discount curve generation failed: {str(e)}", exc_info=True)
             return {}
 
     def summary(self) -> Dict[str, float]:
@@ -274,7 +308,8 @@ class ZeroCouponBondAnalytics(BondAnalyticsBase):
             'macaulay_duration': self.macaulay_duration,
             'simple_duration': self.simple_duration,
             'convexity': self.convexity,
-            'dv01': self.dv01
+            'dv01': self.dv01,
+            'normalized_price': self._get_normalized_market_price,
         }
 
         results = {}
@@ -308,10 +343,13 @@ class ZeroCouponBondAnalytics(BondAnalyticsBase):
         self._rate_quote.setValue(rate)
         self.invalidate_cache()
 
-    def update_settlement_date(self, new_date: date) -> None:
-        if new_date < self.issue_date:
-            raise ValueError("Settlement cannot be before issue")
-        self.settlement_date = new_date
+    def update_evaluation_date(self, new_date: date) -> None:
+        if to_ql_date(new_date) < self.issue_date:
+            raise ValueError("Evaluation date cannot be before Issue date")
+        if to_ql_date(new_date) > self.maturity_date:
+            raise ValueError("Evaluation date cannot be after Maturity date")
+        self.evaluation_date = to_ql_date(new_date)
+        self._set_eval_date_and_settlement_date()
         self._bond = None
         self._discount_curve = None
         self._rate_quote = None

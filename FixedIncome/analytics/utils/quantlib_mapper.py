@@ -1,7 +1,9 @@
 from datetime import date
 
-from QuantLib import Actual360, Actual365Fixed, ActualActual, Business252, Date, DayCounter, Days, Following, \
-    HalfMonthModifiedFollowing, ModifiedFollowing, ModifiedPreceding, Nearest, Period, Preceding, Thirty360, Unadjusted
+from QuantLib import Actual360, Actual365Fixed, ActualActual, Business252, Date, DayCounter, Following, \
+    HalfMonthModifiedFollowing, ModifiedFollowing, ModifiedPreceding, Nearest, Period, Preceding, Thirty360, \
+    Unadjusted, \
+    _QuantLib
 from QuantLib import Argentina, Australia, Brazil, Canada, China, France, Germany, HongKong, India, Indonesia, Israel, \
     Japan, Mexico, NewZealand, NullCalendar, SaudiArabia, Singapore, SouthAfrica, SouthKorea, Switzerland, TARGET, \
     Thailand, UnitedKingdom, UnitedStates
@@ -57,15 +59,15 @@ def to_ql_compounding(compounding_enum: CompoundingEnum) -> int:
 
 def to_ql_frequency(freq_enum: FrequencyEnum) -> Period:
     mapping = {
-        FrequencyEnum.NO_FREQUENCY: Period(0, "D"),
-        FrequencyEnum.ONCE: Period(1, "Y"),
-        FrequencyEnum.ANNUAL: Period(1, "Y"),
-        FrequencyEnum.SEMIANNUAL: Period(6, "M"),
-        FrequencyEnum.QUARTERLY: Period(3, "M"),
-        FrequencyEnum.MONTHLY: Period(1, "M"),
-        FrequencyEnum.WEEKLY: Period(1, "W"),
-        FrequencyEnum.DAILY: Period(1, "D"),
-        FrequencyEnum.OTHER_FREQUENCY: Period(1, "D"),
+        FrequencyEnum.NO_FREQUENCY: _QuantLib.NoFrequency,
+        FrequencyEnum.ONCE: _QuantLib.Once,
+        FrequencyEnum.ANNUAL: _QuantLib.Annual,
+        FrequencyEnum.SEMIANNUAL: _QuantLib.Semiannual,
+        FrequencyEnum.QUARTERLY: _QuantLib.Quarterly,
+        FrequencyEnum.MONTHLY: _QuantLib.Monthly,
+        FrequencyEnum.WEEKLY: _QuantLib.Weekly,
+        FrequencyEnum.DAILY: _QuantLib.Daily,
+        FrequencyEnum.OTHER_FREQUENCY: _QuantLib.OtherFrequency,
     }
     return mapping[freq_enum]
 
@@ -119,7 +121,7 @@ def to_ql_calendar(calendar_enum: CalendarEnum):
         raise ValueError(f"Unsupported CalendarEnum: {calendar_enum}")
 
 
-def get_business_day_convention(convention_enum: BusinessDayConventionEnum):
+def to_ql_business_day_convention(convention_enum: BusinessDayConventionEnum):
     mapping = {
         BusinessDayConventionEnum.FOLLOWING: Following,
         BusinessDayConventionEnum.MODIFIED_FOLLOWING: ModifiedFollowing,
@@ -133,14 +135,3 @@ def get_business_day_convention(convention_enum: BusinessDayConventionEnum):
         return mapping[convention_enum]
     except KeyError:
         raise ValueError(f"Unsupported CalendarEnum: {convention_enum}")
-
-
-def next_business_day(date, calendar):
-    """
-    Given a QuantLib Date and a QuantLib Calendar, return the next business day
-    on or after the given date.
-    """
-    ql_date = date if isinstance(date, Date) else to_ql_date(date)
-    while not calendar.isBusinessDay(ql_date):
-        ql_date = calendar.advance(ql_date, 1, Days)
-    return ql_date

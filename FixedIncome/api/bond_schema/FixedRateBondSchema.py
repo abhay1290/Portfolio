@@ -5,7 +5,6 @@ from pydantic import Field, model_validator
 
 from FixedIncome.api.bond_schema.BondBaseSchema import BondBaseRequest, BondBaseResponse
 from FixedIncome.enums.BondTypeEnum import BondTypeEnum
-from FixedIncome.enums.BusinessDayConventionEnum import BusinessDayConventionEnum
 from FixedIncome.enums.CalenderEnum import CalendarEnum
 from FixedIncome.enums.FrequencyEnum import FrequencyEnum
 
@@ -16,9 +15,6 @@ class FixedRateBondRequest(BondBaseRequest):
 
     redemption_value: Optional[float] = Field(100.0, ge=0, description="Redemption value as % of face value")
     redemption_date: Optional[date] = Field(None, description="Redemption date if different from maturity")
-
-    business_day_convention: Optional[BusinessDayConventionEnum] = Field(None,
-                                                                         description="Business day adjustment for coupons/redemption")
 
     ex_coupon_days: Optional[int] = Field(None, ge=0, description="Number of ex-coupon days before coupon date")
     ex_coupon_calendar: Optional[CalendarEnum] = Field(None, description="Calendar for ex-coupon days")
@@ -48,8 +44,6 @@ class FixedRateBondResponse(BondBaseResponse):
 
     redemption_value: float
     redemption_date: Optional[date]
-
-    business_day_convention: BusinessDayConventionEnum
 
     ex_coupon_days: Optional[int]
     ex_coupon_calendar: Optional[CalendarEnum]

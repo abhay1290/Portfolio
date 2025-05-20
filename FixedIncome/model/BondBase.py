@@ -3,6 +3,7 @@ from sqlalchemy import Column, Date, DateTime, Enum, Float, Integer, String, fun
 from Currency.CurrencyEnum import CurrencyEnum
 from FixedIncome.database import Base
 from FixedIncome.enums.BondTypeEnum import BondTypeEnum
+from FixedIncome.enums.BusinessDayConventionEnum import BusinessDayConventionEnum
 from FixedIncome.enums.CalenderEnum import CalendarEnum
 from FixedIncome.enums.CompoundingEnum import CompoundingEnum
 from FixedIncome.enums.DayCountConventionEnum import DayCountConventionEnum
@@ -28,6 +29,8 @@ class BondBase(Base):
     evaluation_date = Column(Date, nullable=False)
     settlement_days = Column(Integer, nullable=False, default=2)
     calendar = Column(Enum(CalendarEnum), nullable=False, default=CalendarEnum.TARGET)
+    business_day_convention = Column(Enum(BusinessDayConventionEnum), nullable=False,
+                                     default=BusinessDayConventionEnum.FOLLOWING)
 
     # Financial values
     face_value = Column(Float, nullable=False)

@@ -9,7 +9,7 @@ from QuantLib import Annual, BondFunctions, BondPrice, Callability, CallabilityS
     TreeCallableFixedRateBondEngine, YieldTermStructureHandle
 
 from FixedIncome.analytics.formulation.BondAnalyticsBase import BondAnalyticsBase
-from FixedIncome.analytics.utils.quantlib_helpers import to_ql_date
+from FixedIncome.analytics.utils.quantlib_mapper import to_ql_date
 from FixedIncome.model.CallableBondModel import CallableBondModel
 
 
