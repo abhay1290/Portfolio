@@ -33,8 +33,8 @@ class BondBaseRequest(BaseModel):
 
     # Conventions
     day_count_convention: DayCountConventionEnum = Field(default=DayCountConventionEnum.ACTUAL_365_FIXED)
-    compounding: CompoundingEnum = Field(default=CompoundingEnum.SIMPLE)
-    frequency: FrequencyEnum = Field(default=FrequencyEnum.NO_FREQUENCY)
+    compounding: CompoundingEnum = Field(default=CompoundingEnum.COMPOUNDED)
+    frequency: FrequencyEnum = Field(default=FrequencyEnum.ANNUAL)
 
     model_config = ConfigDict(extra="forbid")
 

@@ -5,7 +5,7 @@ from FixedIncome.enums.BondTypeEnum import BondTypeEnum
 
 
 class ZeroCouponBondRequest(BondBaseRequest):
-    accrues_interest_flag: bool = Field(...,
+    accrues_interest_flag: bool = Field(default=False,
                                         description="Whether accrued interest is applicable for the zero coupon bond")
 
     @model_validator(mode='after')
