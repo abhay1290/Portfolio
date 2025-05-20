@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from FixedIncome.model.BondBase import BondBase
+from FixedIncome.tasks.analytics import compute_bond_analytics
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ logger.debug(f"ResponseSchemaType: {ResponseSchemaType}")
 
 
 def get_db():
-    from Database.database import SessionLocal
+    from FixedIncome.database import SessionLocal
     db = SessionLocal()
     try:
         yield db
@@ -177,6 +178,10 @@ class BondGenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]
             db.add(db_item)
             db.commit()
             db.refresh(db_item)
+
+            # Computes analytics on creation
+            compute_bond_analytics.delay(db_item.id, db_item.bond_type)  # Async trigger
+
             return self.response_schema.model_validate(db_item)
         except IntegrityError as e:
             db.rollback()
@@ -271,6 +276,10 @@ class BondGenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]
 
             db.commit()
             db.refresh(item)
+
+            # Computes analytics on update
+            compute_bond_analytics.delay(item.id, item.bond_type)  # Async trigger
+
         except Exception as e:
             db.rollback()
             logging.error(f"Database error: {str(e)}")
@@ -305,6 +314,10 @@ class BondGenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]
 
             db.commit()
             db.refresh(item)
+
+            # Computes analytics on update
+            compute_bond_analytics.delay(item.id, item.bond_type)  # Async trigger
+
         except Exception as e:
             db.rollback()
             logging.error(f"Database error: {str(e)}")

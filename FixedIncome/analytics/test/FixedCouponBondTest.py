@@ -3,8 +3,8 @@ from datetime import date, timedelta
 
 from FixedIncome.analytics.BondAnalyticsFactory import bond_analytics_factory
 from FixedIncome.enums.BondTypeEnum import BondTypeEnum
-from FixedIncome.enums.CouponFrequencyEnum import CouponFrequencyEnum
 from FixedIncome.enums.DayCountConventionEnum import DayCountConventionEnum
+from FixedIncome.enums.FrequencyEnum import CouponFrequencyEnum
 from FixedIncome.model.FixedRateBondModel import FixedRateBondModel
 
 

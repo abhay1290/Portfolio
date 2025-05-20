@@ -1,9 +1,17 @@
-from abc import ABC, abstractmethod
+def bond_analytics_factory(bond: BondBase) -> BondAnalyticsBase:
+    if bond.bond_type == BondTypeEnum.ZERO_COUPON:
+        return ZeroCouponBondAnalytics(bond)
+    elif bond.bond_type == BondTypeEnum.FIXED_COUPON:
+        return FixedRateBondAnalytics(bond)
+    elif bond.bond_type == BondTypeEnum.CALLABLE:
+        return CallableBondAnalytics(bond)
+    elif bond.bond_type == BondTypeEnum.PUTABLE:
+        return PutableBondAnalytics(bond)
+    elif bond.bond_type == BondTypeEnum.FLOATING:
+        return FloatingRateBondAnalytics(bond)
+    else:
+        raise ValueError(f"Unsupported bond type: {bond.bond_type}")
 
-from QuantLib import *
-
-from FixedIncome.model.BondBase import BondBase
-from FixedIncome.utils.quantlib_helpers import _to_ql_date, _to_ql_day_count
 
 
 class BondAnalyticsBase(ABC):
@@ -79,3 +87,29 @@ class BondAnalyticsBase(ABC):
     @abstractmethod
     def get_discount_curve(self):
         pass
+
+
+CREATE TABLE bond_analytics (
+    id SERIAL PRIMARY KEY,
+    bond_id INTEGER REFERENCES bonds(id),
+    analytics_date DATE NOT NULL,
+    bond_type Enum,
+
+    clean_price FLOAT,
+    dirty_price FLOAT,
+    accrued_interest FLOAT,
+
+    ytm FLOAT,
+    ytw FLOAT,
+
+    duration_mod FLOAT,
+    duration_mac FLOAT,
+    duration_simple FLOAT,
+
+    convexity FLOAT,
+    dv01 FLOAT,
+
+    summary JSON,
+
+    UNIQUE (bond_id, analytics_date)
+);

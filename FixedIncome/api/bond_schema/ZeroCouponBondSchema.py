@@ -1,10 +1,12 @@
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from FixedIncome.api.bond_schema.BondBaseSchema import BondBaseRequest, BondBaseResponse
 from FixedIncome.enums.BondTypeEnum import BondTypeEnum
 
 
 class ZeroCouponBondRequest(BondBaseRequest):
+    accrues_interest_flag: bool = Field(...,
+                                        description="Whether accrued interest is applicable for the zero coupon bond")
 
     @model_validator(mode='after')
     def validate_zero_coupon_bond(self):
@@ -14,4 +16,4 @@ class ZeroCouponBondRequest(BondBaseRequest):
 
 
 class ZeroCouponBondResponse(BondBaseResponse):
-    pass
+    accrues_interest_flag: bool

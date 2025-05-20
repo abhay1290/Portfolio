@@ -8,7 +8,7 @@ from QuantLib import (AmortizingFixedRateBond, Annual, BondFunctions, Compounded
                       Settings,
                       Simple, SimpleQuote, YieldTermStructureHandle)
 
-from FixedIncome.analytics.BondAnalyticsBase import BondAnalyticsBase
+from FixedIncome.analytics.formulation.BondAnalyticsBase import BondAnalyticsBase
 from FixedIncome.model.SinkingFundBondModel import SinkingFundBondModel
 
 

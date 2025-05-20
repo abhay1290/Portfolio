@@ -3,20 +3,22 @@ import math
 from datetime import date
 from typing import Dict, List, Tuple
 
-from QuantLib import (Annual, BondFunctions, Compounded, Days, DiscountingBondEngine, Duration, FlatForward,
-                      QuoteHandle, Settings, Simple, SimpleQuote, YieldTermStructureHandle, ZeroCouponBond)
+from QuantLib import Annual, BondFunctions, BondPrice, Callability, CallabilitySchedule, CallableFixedRateBond, \
+    Compounded, DateGeneration, Days, Duration, FlatForward, HullWhite, Months, Period, QuoteHandle, Schedule, Settings, \
+    Simple, SimpleQuote, TimeGrid, \
+    TreeCallableFixedRateBondEngine, YieldTermStructureHandle
 
-from FixedIncome.analytics.BondAnalyticsFactory import BondAnalyticsBase
-from FixedIncome.model.ZeroCouponBondModel import ZeroCouponBondModel
+from FixedIncome.analytics.formulation.BondAnalyticsBase import BondAnalyticsBase
+from FixedIncome.analytics.utils.quantlib_helpers import to_ql_date
+from FixedIncome.model.CallableBondModel import CallableBondModel
 
 
-class ZeroCouponBondAnalytics(BondAnalyticsBase):
-    def __init__(self, bond: ZeroCouponBondModel):
-        """Initialize with enhanced validation"""
+class CallableBondAnalytics(BondAnalyticsBase):
+    def __init__(self, bond: CallableBondModel):
         super().__init__(bond)
 
-        if not isinstance(bond, ZeroCouponBondModel):
-            raise ValueError("Must provide a ZeroCouponBondModel instance")
+        if not isinstance(bond, CallableBondModel):
+            raise ValueError("Must provide a CallableBondModel instance")
 
         # Adjust settlement date if it's a holiday
         self._adjust_settlement_date_for_holidays()
@@ -28,6 +30,13 @@ class ZeroCouponBondAnalytics(BondAnalyticsBase):
         self._discount_curve = None
         self._rate_quote = None
         self._validate_inputs()
+
+        self.coupon_rate = bond.coupon_rate
+        self.coupon_frequency = bond.coupon_frequency
+        self.schedule = None
+
+        self.call_schedule = bond.call_schedule
+        self.callability_schedule = CallabilitySchedule()
 
     def _adjust_settlement_date_for_holidays(self):
         """
@@ -53,9 +62,7 @@ class ZeroCouponBondAnalytics(BondAnalyticsBase):
             raise ValueError("Settlement date cannot be before issue date")
 
     def _build_yield_curve(self, initial_rate: float = 0.05) -> Tuple[YieldTermStructureHandle, SimpleQuote]:
-        """
-        Build yield curve properly anchored to the settlement date.
-        """
+        """Separate yield curve construction for better maintainability"""
         flat_rate = SimpleQuote(initial_rate)
 
         # Use settlement date as reference date for the curve
@@ -69,30 +76,61 @@ class ZeroCouponBondAnalytics(BondAnalyticsBase):
 
         return YieldTermStructureHandle(curve), flat_rate
 
-    def build_quantlib_bond(self) -> ZeroCouponBond:
-        """
-        Construct QuantLib ZeroCouponBond with proper setup
-        """
-        if self._bond is None:
-            # Ensure evaluation date is set correctly
-            Settings.instance().evaluationDate = self.settlement_date
+    def _build_coupon_schedule(self):
+        return Schedule(
+            self.issue_date,
+            self.maturity_date,
+            Period(int(12 / self.coupon_frequency.value), Months),
+            self.calendar,
+            self.convention,
+            self.convention,
+            DateGeneration.Backward,
+            False
+        )
 
+    def _build_callability_schedule(self):
+        for entry in self.call_schedule:
+            schedule_date = to_ql_date(date.fromisoformat(entry["date"]))
+            schedule_price = entry["price"]
+            self.callability_schedule.append(Callability(
+                BondPrice(schedule_price, BondPrice.Clean),
+                Callability.Call,
+                schedule_date
+            ))
+
+    def build_quantlib_bond(self) -> CallableFixedRateBond:
+        """Lazily construct and return the QuantLib CallableFixedRateBond object"""
+        if self.schedule is None:
+            self.schedule = self._build_coupon_schedule()
+
+        if self.call_schedule and len(self.callability_schedule) == 0:
+            self._build_callability_schedule()
+
+        if self._bond is None:
             # Create bond instrument
-            self._bond = ZeroCouponBond(
-                settlementDays=self.settlement_days,
-                calendar=self.calendar,
+            self._bond = CallableFixedRateBond(
+                settlementDays=1,
                 faceAmount=self.face_value,
-                maturityDate=self.maturity_date,
+                schedule=self.schedule,
+                coupons=[self.coupon_rate],
+                dayCounter=self.day_count_convention,
                 paymentConvention=self.convention,
                 redemption=100.0,
-                issueDate=self.issue_date
+                issueDate=self.issue_date,
+                putCallSchedule=self.callability_schedule
             )
 
-            # Build discount curve and attach pricing engine
+            # Build and attach yield curve
             self._discount_curve, self._rate_quote = self._build_yield_curve()
 
             # Set pricing engine with the properly constructed discount curve
-            self._bond.setPricingEngine(DiscountingBondEngine(self._discount_curve))
+            model = HullWhite(self._discount_curve)
+
+            years_to_maturity = self._discount_curve.referenceDate().yearFraction(self.maturity_date)
+            time_grid = TimeGrid(years_to_maturity, 100)
+
+            engine = TreeCallableFixedRateBondEngine(model, time_grid)
+            self._bond.setPricingEngine(engine)
 
         return self._bond
 
@@ -146,6 +184,9 @@ class ZeroCouponBondAnalytics(BondAnalyticsBase):
         Computed with Compounded Annual convention.
         """
         try:
+            if self.market_price is None:
+                raise ValueError("Market price must be set before calculating yield to maturity")
+
             # Ensure evaluation date is set correctly
             Settings.instance().evaluationDate = self.settlement_date
 
@@ -160,12 +201,44 @@ class ZeroCouponBondAnalytics(BondAnalyticsBase):
             logging.error(f"YTM calculation failed: {str(e)}")
             return float('nan')
 
+    def yield_to_call(self) -> float:
+        """
+        Returns the Yield to Call (YTC), calculated to the earliest call date after settlement.
+        If no future call date is available, returns NaN.
+        """
+        try:
+            Settings.instance().evaluationDate = self.settlement_date
+            bond = self.build_quantlib_bond()
+
+            # Find the first call date strictly after settlement
+            future_calls = [c for c in self.callability_schedule if c.date() > self.settlement_date]
+            if not future_calls:
+                logging.warning("No future call dates available to compute YTC.")
+                return float('nan')
+
+            first_call = min(future_calls, key=lambda c: c.date())
+            call_date = first_call.date()
+            call_price = first_call.price().amount()
+
+            return BondFunctions.bondYield(
+                bond,
+                call_price,
+                self.day_count_convention,
+                Compounded,
+                Annual,
+                self.settlement_date,
+                call_date
+            )
+
+        except Exception as e:
+            logging.error(f"YTC calculation failed: {str(e)}")
+            return float('nan')
+
     def yield_to_worst(self) -> float:
         """
         Returns Yield to Worst (YTW).
-        For non-callable zero-coupon bonds, YTW = YTM.
         """
-        return self.yield_to_maturity()
+        return min(self.yield_to_maturity(), self.yield_to_call())
 
     def modified_duration(self) -> float:
         """Returns the modified duration in years"""
@@ -346,6 +419,7 @@ class ZeroCouponBondAnalytics(BondAnalyticsBase):
             'dirty_price': self.dirty_price,
             'accrued_interest': self.accrued_interest,
             'yield_to_maturity': self.yield_to_maturity,
+            'yield_to_call': self.yield_to_call,
             'yield_to_worst': self.yield_to_worst,
             'modified_duration': self.modified_duration,
             'macaulay_duration': self.macaulay_duration,

@@ -1,9 +1,9 @@
-from FixedIncome.analytics.BondAnalyticsBase import BondAnalyticsBase
-from FixedIncome.analytics.CallableBondAnalytics import CallableBondAnalytics
-from FixedIncome.analytics.FixedRateBondAnalytics import FixedRateBondAnalytics
-from FixedIncome.analytics.FloatingRateBondAnalytics import FloatingRateBondAnalytics
-from FixedIncome.analytics.PutableBondAnalytics import PutableBondAnalytics
-from FixedIncome.analytics.ZeroCouponBondAnalytics import ZeroCouponBondAnalytics
+from FixedIncome.analytics.formulation.BondAnalyticsBase import BondAnalyticsBase
+from FixedIncome.analytics.formulation.CallableBondAnalytics import CallableBondAnalytics
+from FixedIncome.analytics.formulation.FixedRateBondAnalytics import FixedRateBondAnalytics
+from FixedIncome.analytics.formulation.FloatingRateBondAnalytics import FloatingRateBondAnalytics
+from FixedIncome.analytics.formulation.PutableBondAnalytics import PutableBondAnalytics
+from FixedIncome.analytics.formulation.ZeroCouponBondAnalytics import ZeroCouponBondAnalytics
 from FixedIncome.enums.BondTypeEnum import BondTypeEnum
 from FixedIncome.model.BondBase import BondBase
 

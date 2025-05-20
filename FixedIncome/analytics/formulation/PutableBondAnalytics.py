@@ -9,9 +9,9 @@ from QuantLib import Annual, BondFunctions, BondPrice, Callability, CallabilityS
     TimeGrid, \
     TreeCallableFixedRateBondEngine, YieldTermStructureHandle
 
-from FixedIncome.analytics.BondAnalyticsBase import BondAnalyticsBase
+from FixedIncome.analytics.formulation.BondAnalyticsBase import BondAnalyticsBase
+from FixedIncome.analytics.utils.quantlib_helpers import to_ql_date
 from FixedIncome.model.PutableBondModel import PutableBondModel
-from FixedIncome.utils.quantlib_helpers import _to_ql_date
 
 
 class PutableBondAnalytics(BondAnalyticsBase):
@@ -90,7 +90,7 @@ class PutableBondAnalytics(BondAnalyticsBase):
 
     def _build_putability_schedule(self):
         for entry in self.put_schedule:
-            schedule_date = _to_ql_date(date.fromisoformat(entry["date"]))
+            schedule_date = to_ql_date(date.fromisoformat(entry["date"]))
             schedule_price = entry["price"]
             self.putability_schedule.append(Callability(
                 BondPrice(schedule_price, BondPrice.Clean),

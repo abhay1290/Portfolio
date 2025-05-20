@@ -3,22 +3,20 @@ import math
 from datetime import date
 from typing import Dict, List, Tuple
 
-from QuantLib import Annual, BondFunctions, BondPrice, Callability, CallabilitySchedule, CallableFixedRateBond, \
-    Compounded, DateGeneration, Days, Duration, FlatForward, HullWhite, Months, Period, QuoteHandle, Schedule, Settings, \
-    Simple, SimpleQuote, TimeGrid, \
-    TreeCallableFixedRateBondEngine, YieldTermStructureHandle
+from QuantLib import Annual, BondFunctions, Compounded, DateGeneration, Days, DiscountingBondEngine, Duration, \
+    Euribor6M, FlatForward, FloatingRateBond, Months, Period, QuoteHandle, Schedule, Settings, Simple, SimpleQuote, \
+    YieldTermStructureHandle
 
-from FixedIncome.analytics.BondAnalyticsBase import BondAnalyticsBase
-from FixedIncome.model.CallableBondModel import CallableBondModel
-from FixedIncome.utils.quantlib_helpers import _to_ql_date
+from FixedIncome.analytics.formulation.BondAnalyticsBase import BondAnalyticsBase
+from FixedIncome.model.FloatingRateBondModel import FloatingRateBondModel
 
 
-class CallableBondAnalytics(BondAnalyticsBase):
-    def __init__(self, bond: CallableBondModel):
+class FloatingRateBondAnalytics(BondAnalyticsBase):
+    def __init__(self, bond: FloatingRateBondModel):
         super().__init__(bond)
 
-        if not isinstance(bond, CallableBondModel):
-            raise ValueError("Must provide a CallableBondModel instance")
+        if not isinstance(bond, FloatingRateBondModel):
+            raise ValueError("Must provide a FloatingRateBondModel instance")
 
         # Adjust settlement date if it's a holiday
         self._adjust_settlement_date_for_holidays()
@@ -34,9 +32,6 @@ class CallableBondAnalytics(BondAnalyticsBase):
         self.coupon_rate = bond.coupon_rate
         self.coupon_frequency = bond.coupon_frequency
         self.schedule = None
-
-        self.call_schedule = bond.call_schedule
-        self.callability_schedule = CallabilitySchedule()
 
     def _adjust_settlement_date_for_holidays(self):
         """
@@ -88,49 +83,37 @@ class CallableBondAnalytics(BondAnalyticsBase):
             False
         )
 
-    def _build_callability_schedule(self):
-        for entry in self.call_schedule:
-            schedule_date = _to_ql_date(date.fromisoformat(entry["date"]))
-            schedule_price = entry["price"]
-            self.callability_schedule.append(Callability(
-                BondPrice(schedule_price, BondPrice.Clean),
-                Callability.Call,
-                schedule_date
-            ))
-
-    def build_quantlib_bond(self) -> CallableFixedRateBond:
-        """Lazily construct and return the QuantLib CallableFixedRateBond object"""
+    def build_quantlib_bond(self) -> FloatingRateBond:
+        """Lazily construct and return the QuantLib FixedRateBond object"""
         if self.schedule is None:
             self.schedule = self._build_coupon_schedule()
 
-        if self.call_schedule and len(self.callability_schedule) == 0:
-            self._build_callability_schedule()
+        # TODO make it dynamic
+        index = Euribor6M(self._discount_curve)
 
         if self._bond is None:
             # Create bond instrument
-            self._bond = CallableFixedRateBond(
-                settlementDays=1,
+            self._bond = FloatingRateBond(
+                settlementDays=self.settlement_days,
                 faceAmount=self.face_value,
                 schedule=self.schedule,
-                coupons=[self.coupon_rate],
-                dayCounter=self.day_count_convention,
+                index=index,
                 paymentConvention=self.convention,
+                fixingDays=2,
+                gearings=[1.0],
+                spreads=[0.0],
+                caps=[],
+                floors=[],
+                inArrears=False,
                 redemption=100.0,
-                issueDate=self.issue_date,
-                putCallSchedule=self.callability_schedule
+                issueDate=self.issue_date
             )
 
             # Build and attach yield curve
             self._discount_curve, self._rate_quote = self._build_yield_curve()
 
             # Set pricing engine with the properly constructed discount curve
-            model = HullWhite(self._discount_curve)
-
-            years_to_maturity = self._discount_curve.referenceDate().yearFraction(self.maturity_date)
-            time_grid = TimeGrid(years_to_maturity, 100)
-
-            engine = TreeCallableFixedRateBondEngine(model, time_grid)
-            self._bond.setPricingEngine(engine)
+            self._bond.setPricingEngine(DiscountingBondEngine(self._discount_curve))
 
         return self._bond
 
@@ -184,9 +167,6 @@ class CallableBondAnalytics(BondAnalyticsBase):
         Computed with Compounded Annual convention.
         """
         try:
-            if self.market_price is None:
-                raise ValueError("Market price must be set before calculating yield to maturity")
-
             # Ensure evaluation date is set correctly
             Settings.instance().evaluationDate = self.settlement_date
 
@@ -201,44 +181,12 @@ class CallableBondAnalytics(BondAnalyticsBase):
             logging.error(f"YTM calculation failed: {str(e)}")
             return float('nan')
 
-    def yield_to_call(self) -> float:
-        """
-        Returns the Yield to Call (YTC), calculated to the earliest call date after settlement.
-        If no future call date is available, returns NaN.
-        """
-        try:
-            Settings.instance().evaluationDate = self.settlement_date
-            bond = self.build_quantlib_bond()
-
-            # Find the first call date strictly after settlement
-            future_calls = [c for c in self.callability_schedule if c.date() > self.settlement_date]
-            if not future_calls:
-                logging.warning("No future call dates available to compute YTC.")
-                return float('nan')
-
-            first_call = min(future_calls, key=lambda c: c.date())
-            call_date = first_call.date()
-            call_price = first_call.price().amount()
-
-            return BondFunctions.bondYield(
-                bond,
-                call_price,
-                self.day_count_convention,
-                Compounded,
-                Annual,
-                self.settlement_date,
-                call_date
-            )
-
-        except Exception as e:
-            logging.error(f"YTC calculation failed: {str(e)}")
-            return float('nan')
-
     def yield_to_worst(self) -> float:
         """
         Returns Yield to Worst (YTW).
+        For non-callable zero-coupon bonds, YTW = YTM.
         """
-        return min(self.yield_to_maturity(), self.yield_to_call())
+        return self.yield_to_maturity()
 
     def modified_duration(self) -> float:
         """Returns the modified duration in years"""
@@ -419,7 +367,6 @@ class CallableBondAnalytics(BondAnalyticsBase):
             'dirty_price': self.dirty_price,
             'accrued_interest': self.accrued_interest,
             'yield_to_maturity': self.yield_to_maturity,
-            'yield_to_call': self.yield_to_call,
             'yield_to_worst': self.yield_to_worst,
             'modified_duration': self.modified_duration,
             'macaulay_duration': self.macaulay_duration,
