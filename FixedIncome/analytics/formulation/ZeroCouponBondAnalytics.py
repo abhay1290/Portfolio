@@ -1,6 +1,6 @@
 import logging
 import math
-from datetime import date, date as pydate
+from datetime import date
 from typing import Dict, List, Optional, Tuple
 
 from QuantLib import (BondFunctions, Days, DiscountingBondEngine, Duration, FlatForward,
@@ -103,14 +103,14 @@ class ZeroCouponBondAnalytics(BondAnalyticsBase):
 
         return self._bond
 
-    def cashflows(self) -> List[Tuple[pydate, float]]:
+    def cashflows(self) -> List[Tuple[date, float]]:
         try:
             bond = self.build_quantlib_bond()
             ql_settlement = to_ql_date(self.settlement_date)
             return [
-                (cf.date(), cf.amount())
+                (from_ql_date(cf.date()), cf.amount())
                 for cf in bond.cashflows()
-                if cf.date() >= ql_settlement and cf.amount() > 0
+                if to_ql_date(cf.date()) >= ql_settlement and cf.amount() > 0
             ]
         except Exception as e:
             logging.error(f"Failed to get cashflows: {str(e)}")

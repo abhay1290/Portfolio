@@ -29,7 +29,7 @@ def from_ql_date(d: Date | date) -> date:
 
 def to_ql_day_count(convention: DayCountConventionEnum) -> DayCounter:
     if convention == DayCountConventionEnum.ACTUAL_ACTUAL:
-        return ActualActual()
+        return ActualActual(ActualActual.ISDA)
     elif convention in (DayCountConventionEnum.ACTUAL_360, DayCountConventionEnum.ACT360):
         return Actual360()
     elif convention in (DayCountConventionEnum.ACTUAL_365_FIXED, DayCountConventionEnum.ACT365):

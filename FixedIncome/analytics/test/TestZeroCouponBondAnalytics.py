@@ -2,8 +2,6 @@ import math
 import unittest
 from datetime import date, timedelta
 
-from QuantLib import Date
-
 from Currency.CurrencyEnum import CurrencyEnum
 from FixedIncome.analytics.BondAnalyticsFactory import bond_analytics_factory
 from FixedIncome.analytics.utils.quantlib_mapper import from_ql_date
@@ -157,7 +155,7 @@ class TestZeroCouponBondAnalytics(unittest.TestCase):
         flows = self.analytics.cashflows()
         self.assertEqual(len(flows), 1)
         flow_date, amount = flows[0]
-        self.assertEqual(flow_date, Date(3, 1, 2028))  # maturity date + settlement_days
+        self.assertEqual(flow_date, date(2028, 1, 3))  # maturity date + settlement_days
         self.assertEqual(amount, 100.0)  # 100% redemption of face value
 
     def test_clean_price(self):

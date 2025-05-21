@@ -2,6 +2,7 @@ from datetime import date
 
 from FixedIncome.analytics.BondAnalyticsFactory import bond_analytics_factory
 from FixedIncome.analytics.model.BaseAnalyticsModel import BondAnalyticsModel
+from FixedIncome.analytics.utils.helpers import to_string
 from FixedIncome.database import SessionLocal
 from FixedIncome.model.BondModelFactory import bond_model_factory
 from celery_app import celery_app
@@ -16,7 +17,7 @@ def process_bond_analytics(bond, db_session):
 
     record = BondAnalyticsModel(
         bond_id=bond.id,
-        analytics_date=date.today().isoformat(),
+        analytics_date=date.today(),
         bond_type=bond.bond_type,
 
         clean_price=analytics.clean_price(),
@@ -33,7 +34,7 @@ def process_bond_analytics(bond, db_session):
         convexity=analytics.convexity(),
         dv01=analytics.dv01(),
 
-        summary=summary
+        summary=to_string(summary)
     )
     db_session.merge(record)
     db_session.commit()
