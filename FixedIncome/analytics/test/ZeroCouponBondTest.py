@@ -15,7 +15,7 @@ from FixedIncome.model.BondBase import BondBase
 from FixedIncome.model.ZeroCouponBondModel import ZeroCouponBondModel
 
 
-class TestZeroCouponBondAnalytics(unittest.TestCase):
+class ZeroCouponBondTest(unittest.TestCase):
     """Comprehensive test suite for ZeroCouponBondAnalytics with edge cases and extreme scenarios"""
 
     def setUp(self):
@@ -25,8 +25,8 @@ class TestZeroCouponBondAnalytics(unittest.TestCase):
         self.maturity_date = date(2028, 1, 1)  # 5-year bond
         self.evaluation_date = date(2023, 2, 1)
         self.settlement_days = 2
-        self.face_value = 100.0
-        self.market_price = 85.0
+        self.face_value = 1000.0
+        self.market_price = 850.0
         self.day_count = DayCountConventionEnum.ACTUAL_365_FIXED
 
         # Standard bond model to reuse
@@ -88,8 +88,8 @@ class TestZeroCouponBondAnalytics(unittest.TestCase):
             issue_date=date(2023, 1, 1),
             maturity_date=date(2022, 1, 1),  # Before issue date!
             evaluation_date=date(2023, 2, 1),
-            face_value=1000.0,
-            market_price=850.0,
+            face_value=100.0,
+            market_price=85.0,
             day_count_convention=self.day_count,
             settlement_days=self.settlement_days,
             calendar=CalendarEnum.TARGET,

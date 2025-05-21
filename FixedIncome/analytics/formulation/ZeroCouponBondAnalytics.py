@@ -1,5 +1,6 @@
 import logging
 import math
+from collections import defaultdict
 from datetime import date
 from typing import Dict, List, Optional, Tuple
 
@@ -53,10 +54,21 @@ class ZeroCouponBondAnalytics(BondAnalyticsBase):
 
         if self.evaluation_date > self.maturity_date:
             raise ValueError("Evaluation date is after maturity date.")
+        
+        if hasattr(self, 'market_price') and self.market_price is not None:
+            if self.market_price <= 0:
+                raise ValueError("Market price must be positive")
 
     def _set_eval_date_and_settlement_date(self):
         Settings.instance().evaluationDate = self.evaluation_date
-        self.settlement_date = self.calendar.advance(self.evaluation_date, self.settlement_days, Days)
+        if self.settlement_days == 0:
+            self.settlement_date = self.evaluation_date  # Avoid unnecessary advance
+        else:
+            self.settlement_date = self.calendar.advance(
+                self.evaluation_date,
+                self.settlement_days,
+                Days
+            )
         self.settlement_date = self.calendar.adjust(self.settlement_date, self.business_day_convention)
 
     def _get_normalized_market_price(self) -> float:
@@ -106,33 +118,42 @@ class ZeroCouponBondAnalytics(BondAnalyticsBase):
     def cashflows(self) -> List[Tuple[date, float]]:
         try:
             bond = self.build_quantlib_bond()
-            ql_settlement = to_ql_date(self.settlement_date)
-            return [
-                (from_ql_date(cf.date()), cf.amount())
-                for cf in bond.cashflows()
-                if to_ql_date(cf.date()) >= ql_settlement and cf.amount() > 0
-            ]
+
+            cashflows_by_date = defaultdict(float)
+
+            for cf in bond.cashflows():
+                if not cf.hasOccurred():  # optionally skip past cashflows
+                    cashflows_by_date[from_ql_date(cf.date())] += cf.amount()
+
+            # Return as sorted list of (Date, Amount) tuples
+            return sorted(cashflows_by_date.items(), key=lambda x: x[0])
         except Exception as e:
             logging.error(f"Failed to get cashflows: {str(e)}")
             return []
 
     def clean_price(self) -> float:
+        """Returns clean price normalized to face value of 1000"""
         try:
-            return self.build_quantlib_bond().cleanPrice()
+            ql_price = self.build_quantlib_bond().cleanPrice()  # QL returns price per 100
+            return ql_price * (self.face_value / 100.0)
         except Exception as e:
             logging.error(f"Clean price calculation failed: {str(e)}")
             return float('nan')
 
     def dirty_price(self) -> float:
+        """Returns dirty price normalized to face value of 1000"""
         try:
-            return self.build_quantlib_bond().dirtyPrice()
+            ql_price = self.build_quantlib_bond().dirtyPrice()  # QL returns price per 100
+            return ql_price * (self.face_value / 100.0)
         except Exception as e:
             logging.error(f"Dirty price calculation failed: {str(e)}")
             return float('nan')
 
     def accrued_interest(self) -> float:
+        """Returns accrued interest normalized to face value of 1000"""
         try:
-            return self.build_quantlib_bond().accruedAmount()
+            ql_accrued = self.build_quantlib_bond().accruedAmount()  # QL returns per 100
+            return ql_accrued * (self.face_value / 100.0)
         except Exception as e:
             logging.error(f"Accrued interest calculation failed: {str(e)}")
             return float('nan')
