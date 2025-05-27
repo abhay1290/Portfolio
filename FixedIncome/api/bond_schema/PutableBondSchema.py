@@ -3,7 +3,6 @@ from typing import List, Optional
 from pydantic import Field, model_validator
 
 from FixedIncome.api.bond_schema.BondBaseSchema import BondBaseRequest, BondBaseResponse
-from FixedIncome.api.schedule_schema.CouponScheduleSchema import CouponScheduleEntry
 from FixedIncome.api.schedule_schema.PutScheduleSchema import PutScheduleEntry
 from FixedIncome.enums.BondTypeEnum import BondTypeEnum
 from FixedIncome.enums.FrequencyEnum import FrequencyEnum
@@ -13,7 +12,6 @@ from FixedIncome.enums.FrequencyEnum import FrequencyEnum
 class PutableBondRequest(BondBaseRequest):
     coupon_rate: Optional[float] = Field(None, ge=0, description="Annual coupon rate (non-negative)")
     coupon_frequency: Optional[FrequencyEnum] = Field(None, description="Coupon payment frequency")
-    coupon_schedule: Optional[List[CouponScheduleEntry]] = Field(None, description="Detailed coupon schedule")
 
     put_schedule: Optional[List[PutScheduleEntry]] = Field(None,
                                                            description="Put schedule with date, price, and put type")
@@ -57,18 +55,6 @@ class PutableBondRequest(BondBaseRequest):
                 dates.append(entry.date)
             if dates != sorted(dates):
                 raise ValueError("put_schedule must be sorted by date ascending")
-
-            # # Ensure put_type matches bond flags if present
-            # for entry in self.put_schedule:
-            #     ct = entry.put_type.lower()
-            #     if ct == 'american' and not self.is_american_put:
-            #         raise ValueError("Put schedule entry type 'American' found but is_american_put is False")
-            #     if ct == 'bermudan' and not self.is_bermudan_put:
-            #         raise ValueError("Put schedule entry type 'Bermudan' found but is_bermudan_put is False")
-            #     # European puts are allowed if neither american nor bermudan flags set? Allow?
-
-        # Protection period and notice period must be non-negative if set (Field() enforces >=0)
-        # put_premium must be non-negative if set
 
         return self
 

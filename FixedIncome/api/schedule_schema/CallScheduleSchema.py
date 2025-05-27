@@ -4,5 +4,5 @@ from pydantic import BaseModel, Field
 
 
 class CallScheduleEntry(BaseModel):
-    call_date: date
-    call_price: float = Field(..., ge=0)
+    date: date
+    price: float = Field(..., ge=0)

@@ -123,7 +123,38 @@ class PutableBondAnalytics(BondAnalyticsBase):
             False
         )
 
+    def _filter_put_schedule(self) -> List[Dict]:
+        """Filter out historical put dates and validate remaining schedule."""
+        if not self.put_schedule:
+            return []
+
+        filtered_schedule = []
+        for entry in self.put_schedule:
+            if not isinstance(entry, dict) or "date" not in entry or "price" not in entry:
+                raise ValueError("Put schedule entries must be dicts with 'date' and 'price' keys")
+
+            put_date = to_ql_date(date.fromisoformat(entry["date"]))
+            adjusted_put_date = self.calendar.adjust(put_date, self.business_day_convention)
+
+            # Only include put dates that are in the future relative to evaluation date
+            if adjusted_put_date > self.evaluation_date:
+                filtered_schedule.append({
+                    "date": adjusted_put_date,
+                    "price": float(entry["price"])
+                })
+
+        # Sort the call schedule by date
+        filtered_schedule.sort(key=lambda x: x["date"])
+        return filtered_schedule
+
     def _build_putability_schedule(self):
+        """Build callability schedule considering only future put dates."""
+        filtered_schedule = self._filter_put_schedule()
+
+        if not filtered_schedule:
+            logging.warning("No valid future put dates found in put schedule")
+            return
+
         for entry in self.put_schedule:
             if not isinstance(entry, dict) or "date" not in entry or "price" not in entry:
                 raise ValueError("Put schedule entries must be dicts with 'date' and 'price' keys")
@@ -160,12 +191,11 @@ class PutableBondAnalytics(BondAnalyticsBase):
                 faceAmount=self.face_value,
                 schedule=self.schedule,
                 coupons=[self.coupon_rate],
-                dayCounter=self.day_count_convention,
+                accrualDayCounter=self.day_count_convention,
                 paymentConvention=self.business_day_convention,
                 redemption=100.0,
                 issueDate=self.issue_date,
                 putCallSchedule=self.putability_schedule,
-                paymentCaleder=self.calendar
             )
 
             if self._discount_curve is None or self._rate_quote is None:
