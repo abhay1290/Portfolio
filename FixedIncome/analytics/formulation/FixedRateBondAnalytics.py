@@ -148,10 +148,17 @@ class FixedRateBondAnalytics(BondAnalyticsBase):
             cashflows_by_date = defaultdict(float)
 
             for cf in bond.cashflows():
-                if not cf.hasOccurred():  # optionally skip past cashflows
-                    cashflows_by_date[from_ql_date(cf.date())] += cf.amount()
+                if not cf.hasOccurred():
+                    cf_date = from_ql_date(cf.date())
+                    cf_amount = cf.amount()
+                    if not isinstance(cf_amount, (float, int)):
+                        raise ValueError(f"Invalid cashflow amount {cf_amount} for date {cf_date}")
 
-            # Return as sorted list of (Date, Amount) tuples
+                    if cf_amount == 0:
+                        continue
+
+                    cashflows_by_date[from_ql_date(cf.date())] += cf_amount
+
             return sorted(cashflows_by_date.items(), key=lambda x: x[0])
         except Exception as e:
             logging.error(f"Failed to get cashflows: {str(e)}")

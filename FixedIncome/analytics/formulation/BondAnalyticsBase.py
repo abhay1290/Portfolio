@@ -34,6 +34,10 @@ class BondAnalyticsBase(ABC):
         self.business_day_convention = to_ql_business_day_convention(bond.business_day_convention)
 
     @abstractmethod
+    def _get_normalized_market_price(self):
+        pass
+
+    @abstractmethod
     def build_quantlib_bond(self):
         pass
 

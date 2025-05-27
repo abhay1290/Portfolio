@@ -19,7 +19,8 @@ class SinkingFundBondRequest(BondBaseRequest):
     notionals_schedule: Optional[List[NotionalScheduleEntry]] = Field(None,
                                                                       description="Amortization schedule for sinking fund")
 
-    sinking_fund_type: Optional[SinkingFundTypeEnum] = Field(None, description="Type of sinking fund structure")
+    sinking_fund_type: Optional[SinkingFundTypeEnum] = Field(default=SinkingFundTypeEnum.FIXED_PERCENTAGE,
+                                                             description="Type of sinking fund structure")
     sinking_fund_start_date: Optional[date] = Field(None, description="Start date of sinking fund schedule")
 
     @model_validator(mode='after')

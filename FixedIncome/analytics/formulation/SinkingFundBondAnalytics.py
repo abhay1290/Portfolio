@@ -1,106 +1,149 @@
 import logging
 import math
+from collections import defaultdict
 from datetime import date, datetime
-from typing import Dict, List, Tuple
+from typing import DefaultDict, Dict, List, Optional, Tuple
 
-from QuantLib import (AmortizingFixedRateBond, Annual, BondFunctions, Compounded, Date, DateGeneration, DateVector,
-                      Days, DiscountingBondEngine, Duration, FlatForward, Months, Period, QuoteHandle, Schedule,
+from QuantLib import (AmortizingFixedRateBond, BondFunctions, Date, DateGeneration, Days,
+                      DiscountingBondEngine, Duration, FlatForward, Months, Period, QuoteHandle, Schedule,
                       Settings,
                       Simple, SimpleQuote, YieldTermStructureHandle)
 
 from FixedIncome.analytics.formulation.BondAnalyticsBase import BondAnalyticsBase
+from FixedIncome.analytics.utils.helpers import replace_nan_with_none
+from FixedIncome.analytics.utils.quantlib_mapper import from_ql_date, to_ql_date, to_ql_frequency
 from FixedIncome.model.SinkingFundBondModel import SinkingFundBondModel
 
 
 class SinkingFundBondAnalytics(BondAnalyticsBase):
     def __init__(self, bond: SinkingFundBondModel):
         super().__init__(bond)
+
         if not isinstance(bond, SinkingFundBondModel):
             raise ValueError("Must provide a SinkingFundBondModel instance")
 
-        # Adjust settlement date if it's a holiday
-        self._adjust_settlement_date_for_holidays()
+        self._summary_cache = None
 
-        # Set QuantLib evaluation date to settlement date - #impotant
-        Settings.instance().evaluationDate = self.settlement_date
-
-        self._bond = None
-        self._discount_curve = None
-        self._rate_quote = None
-        self._validate_inputs()
+        self._bond: Optional[AmortizingFixedRateBond] = None
+        self._discount_curve: Optional[YieldTermStructureHandle] = None
+        self._rate_quote: Optional[SimpleQuote] = None
 
         self.coupon_rate = bond.coupon_rate
-        self.coupon_frequency = bond.coupon_frequency
+        self.coupon_frequency = to_ql_frequency(bond.coupon_frequency)
         self.schedule = None
 
-        self.notionals_amounts = None
-        self.notionals_dates = None
+        self.sinking_schedule = bond.sinking_fund_schedule
+        # TODO add treatment based on type
+        self.sinking_fund_type = bond.sinking_fund_type
 
-    def _adjust_settlement_date_for_holidays(self):
-        """
-        Adjust the settlement date if it falls on a holiday.
-        Moves to the next business day if necessary.
-        """
-        original_date = self.settlement_date
-        while not self.calendar.isBusinessDay(self.settlement_date):
+        # Adjust dates to business days
+        self._adjust_dates()
+
+        # Global declaration to anchor the calculation point(valuation_date/as_of_date)
+        self._set_eval_date_and_settlement_date()
+        self._validate_inputs()
+
+    def _adjust_dates(self) -> None:
+        """Adjust all relevant dates according to calendar and business day convention."""
+        self.issue_date = self.calendar.adjust(self.issue_date, self.business_day_convention)
+        self.evaluation_date = self.calendar.adjust(self.evaluation_date, self.business_day_convention)
+        self.maturity_date = self.calendar.adjust(self.maturity_date, self.business_day_convention)
+
+    def _validate_inputs(self) -> None:
+        """Validate bond parameters with more comprehensive checks."""
+        if not isinstance(self.settlement_days, int) or self.settlement_days < 0:
+            raise ValueError("Settlement days must be a non-negative integer")
+
+        if self.maturity_date <= self.issue_date:
+            raise ValueError("Maturity date must be after issue date.")
+
+        if self.settlement_date < self.issue_date:
+            raise ValueError("Settlement date cannot be before issue date.")
+
+        if self.face_value <= 0:
+            raise ValueError("Face value must be positive.")
+
+        if self.evaluation_date > self.maturity_date:
+            raise ValueError("Evaluation date is after maturity date.")
+
+        if not 0 <= self.coupon_rate <= 1:
+            raise ValueError("Coupon rate must be between 0 and 1 (0% to 100%)")
+
+        if hasattr(self, 'market_price') and self.market_price is not None:
+            if self.market_price <= 0:
+                raise ValueError("Market price must be positive")
+
+    def _validate_callability_schedule(self):
+        """Validate sinking fund schedule specifics."""
+        total_sinking = sum(x['notional'] for x in self.sinking_schedule)
+
+        if abs(total_sinking - self.face_value) > 1e-6:  # Floating point tolerance
+            raise ValueError(
+                f"Total sinking payments ({total_sinking}) "
+                f"must equal face value ({self.face_value})"
+            )
+
+        # Check for duplicate dates
+        dates = [x['date'] for x in self.sinking_schedule]
+        if len(dates) != len(set(dates)):
+            raise ValueError("Duplicate dates in sinking schedule")
+
+    def _set_eval_date_and_settlement_date(self):
+        Settings.instance().evaluationDate = self.evaluation_date
+        if self.settlement_days == 0:
+            self.settlement_date = self.evaluation_date  # Avoid unnecessary advance
+        else:
             self.settlement_date = self.calendar.advance(
-                self.settlement_date,
-                1,
+                self.evaluation_date,
+                self.settlement_days,
                 Days
             )
-        logging.info(f"Adjusted settlement date from {original_date} to {self.settlement_date} due to holiday")
+        self.settlement_date = self.calendar.adjust(self.settlement_date, self.business_day_convention)
 
-    def _validate_inputs(self):
-        """Validate bond parameters before QuantLib object creation"""
-        if self.maturity_date <= self.issue_date:
-            raise ValueError("Maturity date must be after issue date")
-        if self.face_value <= 0:
-            raise ValueError("Face value must be positive")
-        if self.settlement_date < self.issue_date:
-            raise ValueError("Settlement date cannot be before issue date")
+    def _get_normalized_market_price(self) -> float:
+        """Returns market price normalized to 100 face value."""
+        market_price = getattr(self, 'market_price', None)
+        if market_price is None:
+            logging.warning("Market price not set, using clean price as fallback.")
+            market_price = self.clean_price()
+        if self.face_value == 0:
+            raise ZeroDivisionError("Face value cannot be zero when normalizing price.")
+        return (market_price / self.face_value) * 100
 
+    # Yield curves must be anchored to the EVALUATION DATE
     def _build_yield_curve(self, initial_rate: float = 0.05) -> Tuple[YieldTermStructureHandle, SimpleQuote]:
-        """Separate yield curve construction for better maintainability"""
         flat_rate = SimpleQuote(initial_rate)
-
-        # Use settlement date as reference date for the curve
         curve = FlatForward(
-            self.settlement_date,
+            self.evaluation_date,
             QuoteHandle(flat_rate),
             self.day_count_convention,
-            Compounded,
-            Annual
+            self.compounding,
+            self.frequency
         )
 
+        curve.enableExtrapolation()  # Allow extrapolation beyond curve dates
         return YieldTermStructureHandle(curve), flat_rate
 
     def _build_coupon_schedule(self):
         return Schedule(
             self.issue_date,
             self.maturity_date,
-            Period(int(12 / self.coupon_frequency.value), Months),
+            Period(int(12 / self.coupon_frequency), Months),
             self.calendar,
-            self.convention,
-            self.convention,
+            self.business_day_convention,
+            self.business_day_convention,
             DateGeneration.Backward,
             False
         )
 
-    def _build_notionals_schedule(self) -> tuple[list[float], DateVector]:
-        """
-        Constructs the notional schedule for a sinking fund bond.
-
-        Returns:
-            tuple: (notional_amounts: list[float], notional_dates: QuantLib.DateVector)
-        """
-        if not self._bond.notionals_schedule:
-            raise ValueError("Notionals schedule is missing.")
+    def _build_notionals_schedule(self) -> DefaultDict[Date, float]:
+        if self.sinking_schedule is None:
+            raise ValueError("Sinking fund schedule is missing.")
 
         # Sort schedule by date (optional, ensures chronological order)
-        schedule = sorted(self._bond.notionals_schedule, key=lambda x: x['date'])
+        schedule = sorted(self.sinking_schedule, key=lambda x: x['date'])
 
-        notional_amounts = []
-        notional_dates = DateVector()
+        sinking_fund_by_date = defaultdict(float)
 
         for entry in schedule:
             try:
@@ -110,126 +153,171 @@ class SinkingFundBondAnalytics(BondAnalyticsBase):
             except Exception as e:
                 raise ValueError(f"Invalid notional schedule entry: {entry} | Error: {e}")
 
-            notional_amounts.append(float(notional))
-            notional_dates.append(ql_date)
+            sinking_fund_by_date[ql_date] += float(notional)
 
-        return notional_amounts, notional_dates
+        return sinking_fund_by_date
 
     def _validate_and_align_notionals_with_schedule(self) -> list[float]:
-        """
-        Validates and aligns notionals with the bond's coupon schedule.
 
-        Ensures that the number of notionals matches the number of periods in the schedule.
-        Raises an error if notional dates do not match coupon dates.
-
-        Returns:
-            A list of notionals aligned with schedule periods (one per period).
-        """
         schedule_dates = [self.schedule.date(i) for i in range(1, self.schedule.size())]
-        if len(self.notionals_dates) != len(schedule_dates):
+        if len(self.sinking_schedule) != len(schedule_dates):
             raise ValueError(
-                f"Mismatch between notional schedule ({len(self.notionals_dates)}) "
+                f"Mismatch between notional schedule ({len(self.sinking_schedule)}) "
                 f"and bond schedule periods ({len(schedule_dates)})."
             )
 
-        for i, (notional_date, sched_date) in enumerate(zip(self.notionals_dates, schedule_dates)):
-            if notional_date != sched_date:
+        for i, (notional_date, schedule_date) in enumerate(zip(self.sinking_schedule.keys(), schedule_dates)):
+            if notional_date != schedule_date:
                 raise ValueError(
-                    f"Notional date at index {i} ({notional_date}) does not match "
-                    f"schedule date ({sched_date})."
+                    f"Sinking fund date at index {i} ({notional_date}) does not match "
+                    f"schedule date ({schedule_date})."
                 )
 
-        return self.notionals_amounts
+        return self.sinking_schedule.values()
 
     def build_quantlib_bond(self) -> AmortizingFixedRateBond:
         if self.schedule is None:
             self.schedule = self._build_coupon_schedule()
 
-        if self.notionals_dates is None:
-            self.notionals_amounts, self.notionals_dates = self._build_notionals_schedule()
+        if self.sinking_schedule is None:
+            self.sinking_schedule = self._build_notionals_schedule()
 
         if self._bond is None:
-            if len(self.notionals_dates) != len(self.schedule) - 1:
-                raise ValueError("Mismatch between schedule and notionals")
-
             self._bond = AmortizingFixedRateBond(
                 settlementDays=self.settlement_days,
                 notionals=self._validate_and_align_notionals_with_schedule(),
                 schedule=self.schedule,
                 coupons=[self.coupon_rate],
                 accrualDayCounter=self.day_count_convention,
-                paymentConvention=self.convention,
+                paymentConvention=self.business_day_convention,
                 redemption=100.0,
                 issueDate=self.issue_date,
                 paymentCalendar=self.calendar
             )
 
-            # Build and attach yield curve
-            self._discount_curve, self._rate_quote = self._build_yield_curve()
+            if self._discount_curve is None or self._rate_quote is None:
+                self._discount_curve, self._rate_quote = self._build_yield_curve()
 
-            # Set pricing engine with the properly constructed discount curve
-            self._bond.setPricingEngine(DiscountingBondEngine(self._discount_curve))
+            engine = DiscountingBondEngine(self._discount_curve)
+            self._bond.setPricingEngine(engine)
 
         return self._bond
 
+    # def build_bond_with_callability_schedule(self) -> Bond:
+    #     """Build a bond with exact sinking fund dates using CallabilitySchedule."""
+    #     # Create regular coupon schedule
+    #     schedule = self._build_coupon_schedule()
+    #
+    #     # Convert sinking schedule to CallabilitySchedule
+    #     callability_schedule = CallabilitySchedule()
+    #     for entry in self.sinking_schedule:
+    #         amount = entry['notional']
+    #         call_date = Date.from_date(datetime.strptime(entry['date'], "%Y-%m-%d").date())
+    #
+    #         # Create callability price object (100 = percentage of face value)
+    #         price = Callability.Price(amount / self.face_value * 100,
+    #                                   Callability.Price.Clean)
+    #
+    #         # Create callability object (Put = sinking fund payment)
+    #         callability = Callability(price,
+    #                                   Callability.Put,
+    #                                   call_date)
+    #         callability_schedule.append(callability)
+    #
+    #     # Build the bond
+    #     bond = Bond(
+    #         self.settlement_days,
+    #         self.calendar,
+    #         self.issue_date,
+    #         callability_schedule
+    #     )
+    #
+    #     # Add coupon schedule
+    #     bond.setupArguments(
+    #         schedule=schedule,
+    #         coupons=[self.coupon_rate],
+    #         dayCounter=self.day_count_convention
+    #     )
+    #
+    #     # Set pricing engine
+    #     if self._discount_curve is None:
+    #         self._discount_curve, self._rate_quote = self._build_yield_curve()
+    #     bond.setPricingEngine(DiscountingBondEngine(self._discount_curve))
+    #
+    #     return bond
+
     def cashflows(self) -> List[Tuple[date, float]]:
-        """Returns all future cashflows as (date, amount) tuples"""
-        bond = self.build_quantlib_bond()
-        return [(cf.date(), cf.amount()) for cf in bond.cashflows() if
-                cf.date() >= self.settlement_date and cf.amount() > 0]
-
-    def clean_price(self) -> float:
-        """Returns the clean price using QuantLib's pricing engine"""
         try:
-            # Ensure QuantLib evaluation date is current
-            Settings.instance().evaluationDate = self.settlement_date
-
             bond = self.build_quantlib_bond()
 
-            return bond.cleanPrice()
+            cashflows_by_date = defaultdict(float)
 
+            for cf in bond.cashflows():
+                if not cf.hasOccurred():
+                    cf_date = from_ql_date(cf.date())
+                    cf_amount = cf.amount()
+                    if not isinstance(cf_amount, (float, int)):
+                        raise ValueError(f"Invalid cashflow amount {cf_amount} for date {cf_date}")
+                    # optionally skip past cashflows
+                    cashflows_by_date[from_ql_date(cf.date())] += cf.amount()
+
+            # Return as sorted list of (Date, Amount) tuples
+            return sorted(cashflows_by_date.items(), key=lambda x: x[0])
+        except Exception as e:
+            logging.error(f"Failed to get cashflows: {str(e)}")
+            return []
+
+    # def cashflows(self) -> List[Tuple[date, float]]:
+    #     bond = self.build_bond_with_callability_schedule()
+    #     cashflows = []
+    #
+    #     for cf in bond.cashflows():
+    #         cf_date = from_ql_date(cf.date())
+    #         amount = cf.amount()
+    #
+    #         # Identify sinking payments
+    #         if hasattr(cf, 'callability'):
+    #             cashflows.append((cf_date, -amount))  # Negative for principal outflows
+    #         else:
+    #             cashflows.append((cf_date, amount))  # Positive for coupon inflows
+    #
+    #     return sorted(cashflows, key=lambda x: x[0])
+
+    def clean_price(self) -> float:
+        """Returns clean price normalized to face value of 1000"""
+        try:
+            ql_price = self.build_quantlib_bond().cleanPrice()  # QL returns price per 100
+            return ql_price * (self.face_value / 100.0)
         except Exception as e:
             logging.error(f"Clean price calculation failed: {str(e)}")
             return float('nan')
 
     def dirty_price(self) -> float:
-        """Returns the dirty price using QuantLib's built-in method"""
+        """Returns dirty price normalized to face value of 1000"""
         try:
-            # Ensure QuantLib evaluation date is current
-            Settings.instance().evaluationDate = self.settlement_date
-
-            bond = self.build_quantlib_bond()
-
-            return bond.dirtyPrice()
-
+            ql_price = self.build_quantlib_bond().dirtyPrice()  # QL returns price per 100
+            return ql_price * (self.face_value / 100.0)
         except Exception as e:
             logging.error(f"Dirty price calculation failed: {str(e)}")
             return float('nan')
 
     def accrued_interest(self) -> float:
-        """Returns the accrued interest since last cashflow"""
+        """Returns accrued interest normalized to face value of 1000"""
         try:
-            # Ensure evaluation date is set correctly
-            Settings.instance().evaluationDate = self.settlement_date
-            return self.build_quantlib_bond().accruedAmount()
+            ql_accrued = self.build_quantlib_bond().accruedAmount()  # QL returns per 100
+            return ql_accrued * (self.face_value / 100.0)
         except Exception as e:
             logging.error(f"Accrued interest calculation failed: {str(e)}")
             return float('nan')
 
     def yield_to_maturity(self) -> float:
-        """
-        Returns the Yield to Maturity (YTM) given the market price.
-        Computed with Compounded Annual convention.
-        """
         try:
-            # Ensure evaluation date is set correctly
-            Settings.instance().evaluationDate = self.settlement_date
-
+            normalized_price = self._get_normalized_market_price()
             return self.build_quantlib_bond().bondYield(
-                self.market_price,
+                normalized_price,
                 self.day_count_convention,
-                Compounded,
-                Annual,
+                self.compounding,
+                self.frequency,
                 self.settlement_date
             )
         except Exception as e:
@@ -244,21 +332,16 @@ class SinkingFundBondAnalytics(BondAnalyticsBase):
         return self.yield_to_maturity()
 
     def modified_duration(self) -> float:
-        """Returns the modified duration in years"""
         try:
-            # Ensure evaluation date is set correctly
-            Settings.instance().evaluationDate = self.settlement_date
-
             ytm = self.yield_to_maturity()
             if math.isnan(ytm):
                 return float('nan')
-
             return BondFunctions.duration(
                 self.build_quantlib_bond(),
                 ytm,
                 self.day_count_convention,
-                Compounded,
-                Annual,
+                self.compounding,
+                self.frequency,
                 Duration.Modified,
                 self.settlement_date
             )
@@ -267,21 +350,16 @@ class SinkingFundBondAnalytics(BondAnalyticsBase):
             return float('nan')
 
     def macaulay_duration(self) -> float:
-        """Returns the Macaulay duration in years"""
         try:
-            # Ensure evaluation date is set correctly
-            Settings.instance().evaluationDate = self.settlement_date
-
             ytm = self.yield_to_maturity()
             if math.isnan(ytm):
                 return float('nan')
-
             return BondFunctions.duration(
                 self.build_quantlib_bond(),
                 ytm,
                 self.day_count_convention,
-                Compounded,
-                Annual,
+                self.compounding,
+                self.frequency,
                 Duration.Macaulay,
                 self.settlement_date
             )
@@ -290,21 +368,16 @@ class SinkingFundBondAnalytics(BondAnalyticsBase):
             return float('nan')
 
     def simple_duration(self) -> float:
-        """Returns simple duration approximation"""
         try:
-            # Ensure evaluation date is set correctly
-            Settings.instance().evaluationDate = self.settlement_date
-
             ytm = self.yield_to_maturity()
             if math.isnan(ytm):
                 return float('nan')
-
             return BondFunctions.duration(
                 self.build_quantlib_bond(),
                 ytm,
                 self.day_count_convention,
                 Simple,
-                Annual,
+                self.frequency,
                 Duration.Simple,
                 self.settlement_date
             )
@@ -313,21 +386,16 @@ class SinkingFundBondAnalytics(BondAnalyticsBase):
             return float('nan')
 
     def convexity(self) -> float:
-        """Returns convexity measure"""
         try:
-            # Ensure evaluation date is set correctly
-            Settings.instance().evaluationDate = self.settlement_date
-
             ytm = self.yield_to_maturity()
             if math.isnan(ytm):
                 return float('nan')
-
             return BondFunctions.convexity(
                 self.build_quantlib_bond(),
                 ytm,
                 self.day_count_convention,
-                Compounded,
-                Annual,
+                self.compounding,
+                self.frequency,
                 self.settlement_date
             )
         except Exception as e:
@@ -335,54 +403,27 @@ class SinkingFundBondAnalytics(BondAnalyticsBase):
             return float('nan')
 
     def dv01(self, bump_size: float = 0.0001) -> float:
-        """
-        Returns DV01 (Dollar Value of 1 basis point)
-
-        Args:
-            bump_size: The yield change to use (default 1bp)
-        """
         try:
-            # Ensure evaluation date is set correctly
-            Settings.instance().evaluationDate = self.settlement_date
-
             ytm = self.yield_to_maturity()
             if math.isnan(ytm):
                 return float('nan')
 
             bond = self.build_quantlib_bond()
-
             price_up = BondFunctions.cleanPrice(
-                bond,
-                ytm + bump_size,
-                self.day_count_convention,
-                Compounded,
-                Annual,
-                self.settlement_date
+                bond, ytm + bump_size, self.day_count_convention, self.compounding,
+                self.frequency, self.settlement_date
             )
-
             price_down = BondFunctions.cleanPrice(
-                bond,
-                ytm - bump_size,
-                self.day_count_convention,
-                Compounded,
-                Annual,
-                self.settlement_date
+                bond, ytm - bump_size, self.day_count_convention, self.compounding,
+                self.frequency, self.settlement_date
             )
 
-            return (price_down - price_up) / 2
+            return (price_down - price_up) / (2 * bump_size)
         except Exception as e:
             logging.error(f"DV01 calculation failed: {str(e)}")
             return float('nan')
 
-    def get_discount_curve(self, start=None, end=None, frequency_days=365) -> Dict[str, float]:
-        """
-        Returns a dictionary of {ISO_date: zero_rate} over the selected range.
-
-        Args:
-            start: Start date (defaults to issue date)
-            end: End date (defaults to maturity date)
-            frequency_days: Sampling frequency in days
-        """
+    def get_discount_curve(self, start=None, end=None, points=20) -> Dict[str, float]:
         try:
             if self._discount_curve is None:
                 self.build_quantlib_bond()
@@ -390,33 +431,50 @@ class SinkingFundBondAnalytics(BondAnalyticsBase):
             curve = self._discount_curve.currentLink()
             calendar = self.calendar
             day_counter = self.day_count_convention
+            compounding = self.compounding
+            frequency = self.frequency
 
-            start = start or self.issue_date
-            end = end or self.maturity_date
+            ql_start = to_ql_date(start or self.evaluation_date)
+            ql_end = to_ql_date(end or self.maturity_date)
 
-            if start > end:
+            if ql_start > ql_end:
                 raise ValueError("Start date must be before end date")
 
-            result = {}
-            current = start
+            # Calculate the total period in years according to day count convention
+            total_years = day_counter.yearFraction(ql_start, ql_end)
 
-            while current <= end:
-                rate = curve.zeroRate(
-                    current,
-                    day_counter,
-                    Compounded,
-                    Annual
-                ).rate()
-                result[current.ISO()] = rate
-                current = calendar.advance(current, frequency_days, Days)
+            # Calculate step size in years
+            step_years = total_years / (points - 1)
+
+            result = {}
+            current = ql_start
+
+            for i in range(points):
+                if i == points - 1:  # Ensure we always include the end date
+                    current = ql_end
+
+                rate = curve.zeroRate(current, day_counter, compounding, frequency).rate()
+                result[from_ql_date(current)] = rate
+
+                # Advance using calendar and business day convention
+                if i < points - 2:  # Don't advance after the second-to-last point
+                    current = calendar.advance(
+                        current,
+                        Period(int(round(step_years * 365)), Days),
+                        self.business_day_convention
+                    )
+                    current = min(current, ql_end)  # Don't go past end date
 
             return result
+
         except Exception as e:
-            logging.error(f"Discount curve generation failed: {str(e)}")
+            logging.error(f"Discount curve generation failed: {str(e)}", exc_info=True)
             return {}
 
     def summary(self) -> Dict[str, float]:
-        """Returns a dictionary of all key bond analytics with safe evaluation"""
+        if self._summary_cache is not None:
+            return self._summary_cache
+
         metrics = {
             'clean_price': self.clean_price,
             'dirty_price': self.dirty_price,
@@ -427,7 +485,8 @@ class SinkingFundBondAnalytics(BondAnalyticsBase):
             'macaulay_duration': self.macaulay_duration,
             'simple_duration': self.simple_duration,
             'convexity': self.convexity,
-            'dv01': lambda: self.dv01(0.0001)
+            'dv01': self.dv01,
+            'normalized_price': self._get_normalized_market_price,
         }
 
         results = {}
@@ -444,30 +503,31 @@ class SinkingFundBondAnalytics(BondAnalyticsBase):
             results['cashflows'] = []
             logging.warning(f"Failed to get cashflows: {str(e)}")
 
-        return results
+        summary_clean = replace_nan_with_none(results)
 
+        self._summary_cache = summary_clean
+        return summary_clean
+
+    def invalidate_cache(self):
+        self._summary_cache = None
+
+    # Then, in methods that update key state, call invalidate_cache
     def update_yield_curve(self, rate: float) -> None:
-        """Update the yield curve with a new rate"""
         if not isinstance(rate, (float, int)) or rate < 0:
             raise ValueError("Rate must be a non-negative number")
-
         if self._rate_quote is None:
             self.build_quantlib_bond()
-
         self._rate_quote.setValue(rate)
+        self.invalidate_cache()
 
-    def update_settlement_date(self, new_date: date) -> None:
-        """
-        Update settlement date and QuantLib evaluation date
-        """
-        if new_date < self.issue_date:
-            raise ValueError("Settlement cannot be before issue")
-
-        # Update QuantLib global evaluation date
-        self.settlement_date = new_date
-        Settings.instance().evaluationDate = self.settlement_date
-
-        # Force rebuild of bond and curve
+    def update_evaluation_date(self, new_date: date) -> None:
+        if to_ql_date(new_date) < self.issue_date:
+            raise ValueError("Evaluation date cannot be before Issue date")
+        if to_ql_date(new_date) > self.maturity_date:
+            raise ValueError("Evaluation date cannot be after Maturity date")
+        self.evaluation_date = to_ql_date(new_date)
+        self._set_eval_date_and_settlement_date()
         self._bond = None
         self._discount_curve = None
         self._rate_quote = None
+        self.invalidate_cache()
