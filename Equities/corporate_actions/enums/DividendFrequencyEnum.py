@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class DividendFrequencyEnum(Enum):
+class DividendFrequencyEnum(str, Enum):
     ANNUAL = "ANNUAL"
     SEMI_ANNUAL = "SEMI_ANNUAL"
     QUARTERLY = "QUARTERLY"

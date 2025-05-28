@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class StatusEnum(Enum):
+class StatusEnum(str, Enum):
     OPEN = "OPEN"
     PENDING = "PENDING"
     CLOSED = "CLOSED"

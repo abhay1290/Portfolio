@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, func
+from sqlalchemy import Column, Date, DateTime, Enum, ForeignKey, Integer, String, func
 
 from Currency.CurrencyEnum import CurrencyEnum
 from Equities.corporate_actions.enums.CorporateActionTypeEnum import CorporateActionTypeEnum
@@ -14,12 +14,12 @@ class CorporateAction(Base):
     equity_id = Column(Integer, ForeignKey('equity.id'), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-    company_name = Column(String, nullable=False)
+    company_name = Column(String, nullable=True)
     action_type = Column(Enum(CorporateActionTypeEnum), nullable=False)
     currency = Column(Enum(CurrencyEnum), nullable=False)  # may differ from equity
     status = Column(Enum(StatusEnum), nullable=False)
 
-    record_date = Column(DateTime, nullable=False)
-    effective_date = Column(DateTime, nullable=False)
+    record_date = Column(Date, nullable=False)
+    effective_date = Column(Date, nullable=False)
 
-    details = Column(String, nullable=False)
+    details = Column(String, nullable=True)

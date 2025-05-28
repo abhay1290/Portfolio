@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class CorporateActionTypeEnum(Enum):
+class CorporateActionTypeEnum(str, Enum):
     # Mandatory Corporate Actions
     CASH_DIVIDEND = "CASH_DIVIDEND"
     STOCK_DIVIDEND = "STOCK_DIVIDEND"

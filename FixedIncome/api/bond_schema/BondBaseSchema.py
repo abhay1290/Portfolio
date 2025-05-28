@@ -38,12 +38,14 @@ class BondBaseRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    @classmethod
     @field_validator("maturity_date")
     def maturity_after_issue(cls, v, info):
         if v <= info.data["issue_date"]:
             raise ValueError("Maturity date must be after issue date")
         return v
 
+    @classmethod
     @field_validator("evaluation_date")
     def eval_before_maturity(cls, v, info):
         if v > info.data["maturity_date"]:

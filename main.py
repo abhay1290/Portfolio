@@ -2,8 +2,7 @@ import logging
 
 from fastapi import FastAPI
 
-from FixedIncome.api.bond_routers_setup import callable_bond_router, fixed_bond_router, floater_bond_router, \
-    putable_bond_router, sinking_bond_router, zero_bond_router
+from Equities.api.equity_routers_setup import dividend_router, equity_router
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -17,12 +16,15 @@ app = FastAPI()
 
 # Include routers
 
-app.include_router(zero_bond_router)
-app.include_router(fixed_bond_router)
-app.include_router(callable_bond_router)
-app.include_router(putable_bond_router)
-app.include_router(floater_bond_router)
-app.include_router(sinking_bond_router)
+# app.include_router(zero_bond_router)
+# app.include_router(fixed_bond_router)
+# app.include_router(callable_bond_router)
+# app.include_router(putable_bond_router)
+# app.include_router(floater_bond_router)
+# app.include_router(sinking_bond_router)
+
+app.include_router(equity_router)
+app.include_router(dividend_router)
 
 # Include router in app
 # app.include_router(bond_router.router)

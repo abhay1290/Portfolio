@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class TaxStatusEnum(Enum):
+class TaxStatusEnum(str, Enum):
     TAXABLE = "TAXABLE"
     TAX_EXEMPT = "TAX_EXEMPT"
     TAX_DEFERRED = "TAX_DEFERRED"
