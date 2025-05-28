@@ -1,10 +1,11 @@
 from sqlalchemy import Column, Enum, Integer, String
 
 from Currency.CurrencyEnum import CurrencyEnum
-from Database.database import Base
 from Identifier.AssetClassEnum import AssetClassEnum
 from Identifier.TaxTypeEnum import TaxTypeEnum
 from Identifier.WeightingMethodologyEnum import WeightingMethodologyEnum
+from Portfolios.database import Base
+
 
 class Portfolio(Base):
     __tablename__ = 'portfolio'
@@ -20,7 +21,6 @@ class Portfolio(Base):
 
     def __init__(self, symbol, currency: CurrencyEnum, asset_class: AssetClassEnum,
                  tax_type: TaxTypeEnum, weighting_methodology: WeightingMethodologyEnum):
-
         self.symbol = symbol
         self.currency = currency
         self.asset_class = asset_class

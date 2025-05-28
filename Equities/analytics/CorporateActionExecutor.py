@@ -1,29 +1,29 @@
-from CorporateActions.CorporateActionEnum import CorporateActionEnum
+from Equities.corporate_actions.enums.CorporateActionTypeEnum import CorporateActionTypeEnum
 
 
 class CorporateActionExecutor:
-    def execute_action(self, action: CorporateActionEnum, **kwargs):
+    def execute_action(self, action: CorporateActionTypeEnum, **kwargs):
         """Execute the specified corporate action."""
         action_methods = {
-            CorporateActionEnum.CASH_DIVIDEND: self._execute_cash_dividend,
-            CorporateActionEnum.STOCK_DIVIDEND: self._execute_stock_dividend,
-            CorporateActionEnum.SPECIAL_DIVIDEND: self._execute_special_dividend,
-            CorporateActionEnum.STOCK_SPLIT: self._execute_stock_split,
-            CorporateActionEnum.RIGHTS_ISSUE: self._execute_rights_issue,
-            CorporateActionEnum.MERGER: self._execute_merger,
-            # CorporateActionEnum.ACQUISITION: self._execute_acquisition,
-            # CorporateActionEnum.TAKEOVER: self._execute_takeover,
-            # CorporateActionEnum.AMALGAMATION: self._execute_amalgamation,
-            # CorporateActionEnum.SPIN_OFF: self._execute_spin_off,
-            # CorporateActionEnum.CAPITAL_REDUCTION: self._execute_capital_reduction,
-            # CorporateActionEnum.DELISTING: self._execute_delisting,
-            # CorporateActionEnum.SHARE_BUYBACK: self._execute_share_buyback,
-            # CorporateActionEnum.TENDER_OFFER: self._execute_tender_offer,
-            # CorporateActionEnum.RIGHTS_ISSUE_OPTIONAL: self._execute_rights_issue_optional,
-            # CorporateActionEnum.WARRANT_EXERCISE: self._execute_warrant_exercise,
-            # CorporateActionEnum.EXCHANGE_OFFER: self._execute_exchange_offer,
-            # CorporateActionEnum.DIVIDEND_OPTION: self._execute_dividend_option,
-            # CorporateActionEnum.PARTIAL_BUYBACK: self._execute_partial_buyback,
+            CorporateActionTypeEnum.CASH_DIVIDEND: self._execute_cash_dividend,
+            CorporateActionTypeEnum.STOCK_DIVIDEND: self._execute_stock_dividend,
+            CorporateActionTypeEnum.SPECIAL_DIVIDEND: self._execute_special_dividend,
+            CorporateActionTypeEnum.STOCK_SPLIT: self._execute_stock_split,
+            CorporateActionTypeEnum.RIGHTS_ISSUE: self._execute_rights_issue,
+            CorporateActionTypeEnum.MERGER: self._execute_merger,
+            # CorporateActionTypeEnum.ACQUISITION: self._execute_acquisition,
+            # CorporateActionTypeEnum.TAKEOVER: self._execute_takeover,
+            # CorporateActionTypeEnum.AMALGAMATION: self._execute_amalgamation,
+            # CorporateActionTypeEnum.SPIN_OFF: self._execute_spin_off,
+            # CorporateActionTypeEnum.CAPITAL_REDUCTION: self._execute_capital_reduction,
+            # CorporateActionTypeEnum.DELISTING: self._execute_delisting,
+            # CorporateActionTypeEnum.SHARE_BUYBACK: self._execute_share_buyback,
+            # CorporateActionTypeEnum.TENDER_OFFER: self._execute_tender_offer,
+            # CorporateActionTypeEnum.RIGHTS_ISSUE_OPTIONAL: self._execute_rights_issue_optional,
+            # CorporateActionTypeEnum.WARRANT_EXERCISE: self._execute_warrant_exercise,
+            # CorporateActionTypeEnum.EXCHANGE_OFFER: self._execute_exchange_offer,
+            # CorporateActionTypeEnum.DIVIDEND_OPTION: self._execute_dividend_option,
+            # CorporateActionTypeEnum.PARTIAL_BUYBACK: self._execute_partial_buyback,
         }
 
         if action in action_methods:
@@ -42,7 +42,6 @@ class CorporateActionExecutor:
 
     def _execute_stock_split(self, ratio: float):
         print(f"Executing Stock Split with ratio: {ratio}.")
-
 
     def _execute_rights_issue(self, new_shares: int, price: float):
         print(f"Executing Rights Issue: {new_shares} new shares at {price} per share.")
@@ -90,7 +89,8 @@ class CorporateActionExecutor:
     #     print(f"Executing Partial Buyback of {shares} shares at {price} per share.")
     #
 
+
 # Example usage
 executor = CorporateActionExecutor()
-executor.execute_action(CorporateActionEnum.CASH_DIVIDEND, amount_per_share=2.5)
-executor.execute_action(CorporateActionEnum.MERGER, company_name="XYZ Corp")
+executor.execute_action(CorporateActionTypeEnum.CASH_DIVIDEND, amount_per_share=2.5)
+executor.execute_action(CorporateActionTypeEnum.MERGER, company_name="XYZ Corp")
