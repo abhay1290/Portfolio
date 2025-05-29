@@ -1,5 +1,5 @@
 from Equities.api.corporate_action_crud_router import CorporateActionGenericRouter
-from Equities.api.corporate_action_schema.dividend_schema import DividendRequest, DividendResponse
+from Equities.api.corporate_action_schema.cash_distribution.dividend_schema import DividendRequest, DividendResponse
 from Equities.api.equity_crud_router import EquityGenericRouter
 from Equities.api.equity_schema.Equity_Schema import EquityRequest, EquityResponse
 from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
