@@ -7,7 +7,7 @@ from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from Equities.corporate_actions.model.CorporateAction import CorporateAction
+from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def _get_model_fields(model_class) -> List[str]:
 class CorporateActionGenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
     def __init__(
             self,
-            base_model: Type[CorporateAction],
+            base_model: Type[CorporateActionBase],
             model: Type[ModelType],
             create_schema: Type[CreateSchemaType],
             response_schema: Type[ResponseSchemaType],

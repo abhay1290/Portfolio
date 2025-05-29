@@ -4,6 +4,6 @@ from enum import Enum
 class DividendTypeEnum(str, Enum):
     CASH = "CASH"
     SPECIAL = "SPECIAL"
-    INTERIM = "INTERIM"
+    STOCK = "STOCK"
     FINAL = "FINAL"
     LIQUIDATING = "LIQUIDATING"
