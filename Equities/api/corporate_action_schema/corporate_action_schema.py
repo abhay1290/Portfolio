@@ -48,7 +48,7 @@ class CorporateActionRequest(BaseModel):
         return v
 
 
-class CorporateActionBaseResponse(CorporateActionRequest):
+class CorporateActionResponse(CorporateActionRequest):
     id: int
     created_at: datetime
     updated_at: Optional[datetime]
