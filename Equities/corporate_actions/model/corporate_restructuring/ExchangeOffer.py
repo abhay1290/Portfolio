@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Date, Float, ForeignKey, Integer, NUMERIC, Text
+from sqlalchemy import Column, Date, Float, ForeignKey, Integer, NUMERIC, Text
 
 from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
 
@@ -21,7 +21,6 @@ class ExchangeOffer(CorporateActionBase):
 
     # Conditions
     minimum_participation = Column(Float, nullable=True)
-    is_mandatory = Column(Boolean, default=False, nullable=False)
 
     # Metadata
     exchange_terms = Column(Text, nullable=True)

@@ -15,8 +15,8 @@ class EquityBase(BaseModel):
     float_shares: Optional[conint(ge=0)] = Field(None, description="Number of shares available to the public")
     market_cap: Optional[confloat(ge=0)] = Field(None, description="Total market capitalization")
 
-    corporate_action_ids: Optional[List[conint(ge=1)]] = Field(default_factory=list,
-                                                               description="List of associated corporate action IDs")
+    corporate_action_ids: Optional[List] = Field(default_factory=list,
+                                                 description="List of associated corporate action IDs")
 
     model_config = ConfigDict(extra="forbid")
 

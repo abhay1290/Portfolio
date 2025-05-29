@@ -1,5 +1,3 @@
-from abc import ABC
-
 from sqlalchemy import Boolean, Column, Date, DateTime, Enum, ForeignKey, Integer, func
 
 from Currency.CurrencyEnum import CurrencyEnum
@@ -10,7 +8,7 @@ from Equities.corporate_actions.enums.StatusEnum import StatusEnum
 from Equities.database import Base
 
 
-class CorporateActionBase(Base, ABC):
+class CorporateActionBase(Base):
     __tablename__ = 'corporate_action'
     API_Path = 'Corporate-Action'
 
