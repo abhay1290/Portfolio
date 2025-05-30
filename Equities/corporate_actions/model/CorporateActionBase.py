@@ -10,7 +10,6 @@ from Equities.database import Base
 
 class CorporateActionBase(Base):
     __tablename__ = 'corporate_action'
-    API_Path = 'Corporate-Action'
 
     # Primary identifiers - absolutely mandatory for all corporate actions
     id = Column(Integer, primary_key=True, autoincrement=True)

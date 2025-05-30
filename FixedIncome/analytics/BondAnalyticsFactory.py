@@ -3,6 +3,7 @@ from FixedIncome.analytics.formulation.CallableBondAnalytics import CallableBond
 from FixedIncome.analytics.formulation.FixedRateBondAnalytics import FixedRateBondAnalytics
 from FixedIncome.analytics.formulation.FloatingRateBondAnalytics import FloatingRateBondAnalytics
 from FixedIncome.analytics.formulation.PutableBondAnalytics import PutableBondAnalytics
+from FixedIncome.analytics.formulation.SinkingFundBondAnalytics import SinkingFundBondAnalytics
 from FixedIncome.analytics.formulation.ZeroCouponBondAnalytics import ZeroCouponBondAnalytics
 from FixedIncome.enums.BondTypeEnum import BondTypeEnum
 from FixedIncome.model.BondBase import BondBase
@@ -19,5 +20,7 @@ def bond_analytics_factory(bond: BondBase) -> BondAnalyticsBase:
         return PutableBondAnalytics(bond)
     elif bond.bond_type == BondTypeEnum.FLOATING:
         return FloatingRateBondAnalytics(bond)
+    elif bond.bond_type == BondTypeEnum.SINKING_FUND:
+        return SinkingFundBondAnalytics(bond)
     else:
         raise ValueError(f"Unsupported bond type: {bond.bond_type}")

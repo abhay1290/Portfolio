@@ -3,6 +3,9 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from Currency.CurrencyEnum import CurrencyEnum
 from Equities.database import Base
+from Equities.enums.BusinessDayConventionEnum import BusinessDayConventionEnum
+from Equities.enums.CalenderEnum import CalendarEnum
+from Equities.enums.DayCountConventionEnum import DayCountConventionEnum
 
 
 class Equity(Base):
@@ -15,13 +18,22 @@ class Equity(Base):
 
     # index_memberships = Column(Text, nullable=True)  # JSON array of index names
 
+    # Identifiers
     symbol = Column(String(10000), nullable=False)
-
     currency = Column(Enum(CurrencyEnum), nullable=False)
+
+    # Financial values
     market_price = Column(Float, nullable=True)
     shares_outstanding = Column(Integer, nullable=True)
     float_shares = Column(Integer, nullable=True)
     market_cap = Column(Float, nullable=True)
+
+    # Evaluation context
+    calendar = Column(Enum(CalendarEnum), nullable=False, default=CalendarEnum.TARGET)
+    business_day_convention = Column(Enum(BusinessDayConventionEnum), nullable=False,
+                                     default=BusinessDayConventionEnum.FOLLOWING)
+    day_count_convention = Column(Enum(DayCountConventionEnum), nullable=False,
+                                  default=DayCountConventionEnum.ACTUAL_ACTUAL)
 
     # Store corporate action IDs as JSONB array
     corporate_action_ids = Column(JSONB, nullable=True, default=list)
