@@ -33,6 +33,26 @@ class ReturnOfCapitalValidationError(CorporateActionValidationError):
     pass
 
 
+class AcquisitionValidationError(CorporateActionValidationError):
+    """Exception raised for a  Acquisition validation errors"""
+    pass
+
+
+class ExchangeOfferValidationError(CorporateActionValidationError):
+    """Exception raised for a ExchangeOffer validation errors"""
+    pass
+
+
+class MergerValidationError(CorporateActionValidationError):
+    """Exception raised for a Merger validation errors"""
+    pass
+
+
+class TenderOfferValidationError(CorporateActionValidationError):
+    """Exception raised for a TenderOffer validation errors"""
+    pass
+
+
 class ProcessingLockError(CorporateActionError):
     """Exception raised when equity is locked for processing"""
     pass

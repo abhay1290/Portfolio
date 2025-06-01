@@ -9,6 +9,7 @@ from Equities.corporate_actions.enums.PriorityEnum import PriorityEnum
 from Equities.corporate_actions.enums.ProcessingModeEnum import ProcessingModeEnum
 from Equities.corporate_actions.enums.StatusEnum import StatusEnum
 from Equities.database import Base
+from Equities.utils.Exceptions import CorporateActionValidationError
 
 
 class CorporateActionBase(Base):
