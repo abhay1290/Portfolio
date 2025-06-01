@@ -1,15 +1,13 @@
 from datetime import date
 
-from QuantLib import Actual360, Actual365Fixed, ActualActual, Business252, Date, DayCounter, Following, \
-    HalfMonthModifiedFollowing, ModifiedFollowing, ModifiedPreceding, Nearest, Preceding, Thirty360, \
-    Unadjusted
 from QuantLib import Argentina, Australia, Brazil, Canada, China, France, Germany, HongKong, India, Indonesia, Israel, \
     Japan, Mexico, NewZealand, NullCalendar, SaudiArabia, Singapore, SouthAfrica, SouthKorea, Switzerland, TARGET, \
     Thailand, UnitedKingdom, UnitedStates
+from QuantLib import Date, Following, \
+    HalfMonthModifiedFollowing, ModifiedFollowing, ModifiedPreceding, Nearest, Preceding, Unadjusted
 
 from FixedIncome.enums.BusinessDayConventionEnum import BusinessDayConventionEnum
 from FixedIncome.enums.CalenderEnum import CalendarEnum
-from FixedIncome.enums.DayCountConventionEnum import DayCountConventionEnum
 
 
 def to_ql_date(d: date | Date) -> Date:
@@ -22,25 +20,6 @@ def from_ql_date(d: Date | date) -> date:
     if isinstance(d, date):
         return d
     return date(d.year(), d.month(), d.dayOfMonth())
-
-
-def to_ql_day_count(convention: DayCountConventionEnum) -> DayCounter:
-    if convention == DayCountConventionEnum.ACTUAL_ACTUAL:
-        return ActualActual(ActualActual.ISDA)
-    elif convention in (DayCountConventionEnum.ACTUAL_360, DayCountConventionEnum.ACT360):
-        return Actual360()
-    elif convention in (DayCountConventionEnum.ACTUAL_365_FIXED, DayCountConventionEnum.ACT365):
-        return Actual365Fixed()
-    elif convention in (DayCountConventionEnum.THIRTY_360_US, DayCountConventionEnum.THIRTY_360):
-        return Thirty360(Thirty360.USA)
-    elif convention == DayCountConventionEnum.THIRTY_E_360:
-        return Thirty360(Thirty360.European)
-    elif convention == DayCountConventionEnum.THIRTY_E_360_ISDA:
-        return Thirty360(Thirty360.ISDA)
-    elif convention == DayCountConventionEnum.BUSINESS_252:
-        return Business252(TARGET())  # Or change to relevant calendar
-    else:
-        raise ValueError(f"Unsupported Day Count Convention: {convention}")
 
 
 def to_ql_calendar(calendar_enum: CalendarEnum):

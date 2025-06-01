@@ -32,7 +32,7 @@ from Equities.corporate_actions.enums.CorporateActionTypeEnum import CorporateAc
 from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
 
 
-def ca_executor_factory(ca: CorporateActionBase) -> CorporateActionExecutorBase:
+def ca_execution_engine(ca: CorporateActionBase) -> CorporateActionExecutorBase:
     # cash distribution
     if ca.action_type == CorporateActionTypeEnum.DIVIDEND:
         return DividendExecutor(ca)

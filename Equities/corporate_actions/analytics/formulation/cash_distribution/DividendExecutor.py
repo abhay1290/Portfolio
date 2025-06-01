@@ -1,134 +1,208 @@
+import logging
+from datetime import datetime
+from decimal import Decimal
+from typing import Any, Dict
+
 from Equities.corporate_actions.analytics.formulation.CorporateActionExecutorBase import CorporateActionExecutorBase
 from Equities.corporate_actions.model.cash_distribution.Dividend import Dividend
+from Equities.utils.Decorators import performance_monitor
+from Equities.utils.Exceptions import DividendValidationError
+
+logger = logging.getLogger(__name__)
 
 
 class DividendExecutor(CorporateActionExecutorBase):
+    def _initialize_executor(self):
+        """Initialize dividend-specific attributes"""
+        if not isinstance(self.corporate_action, Dividend):
+            raise DividendValidationError("Must provide a Dividend instance")
 
-    def __init__(self, ca: Dividend):
-        super().__init__(ca)
+        self.dividend = self.corporate_action
 
-        if not isinstance(ca, Dividend):
-            raise ValueError("Must provide a Dividend instance")
+        # Initialize calculation results
+        self.net_dividend_amount = None
+        self.eligible_outstanding_shares = None
+        self.total_dividend_marketcap_in_dividend_currency = None
+        self.dividend_impact_in_equity_currency = None
+        self.price_adjustment = None
 
-        self.dividend = ca
+        # Validation and adjustment
+        self._adjust_and_validate_dates()
 
-        self._validate_inputs()
+    def _adjust_and_validate_dates(self):
+        """Validate and adjust dividend dates"""
+        # Adjust dates according to calendar
+        if self.dividend.ex_dividend_date:
+            self.dividend.ex_dividend_date = self._adjust_date(
+                datetime.combine(self.dividend.ex_dividend_date, datetime.min.time())
+            )
 
-    def _validate_inputs(self) -> None:
-        """Validate dividend-specific requirements"""
-        if self.dividend.dividend_amount <= 0:
-            raise ValueError("Dividend amount must be positive")
+        self.dividend.record_date = self._adjust_date(
+            datetime.combine(self.dividend.record_date, datetime.min.time())
+        )
+
+        self.dividend.payment_date = self._adjust_date(
+            datetime.combine(self.dividend.payment_date, datetime.min.time())
+        )
+
+        # Validate date sequence
+        if self.dividend.ex_dividend_date and self.dividend.record_date:
+            if self.dividend.ex_dividend_date >= self.dividend.record_date:
+                self.validation_errors.append("Ex-dividend date must be before record date")
 
         if self.dividend.payment_date < self.dividend.record_date:
-            raise ValueError("Payment date cannot be before record date")
+            self.validation_errors.append("Payment date cannot be before record date")
 
-        if self.dividend.ex_dividend_date and self.dividend.ex_dividend_date > self.dividend.record_date:
-            raise ValueError("Ex-dividend date cannot be after record date")
+    def validate_prerequisites(self) -> bool:
+        """Validate prerequisites for dividend execution"""
+        errors = []
 
-    def execute(self):
-        """Execute dividend payment"""
-        pass
-        # start_time = datetime.now()
-        #
-        # try:
-        #     logger.info(f"Executing dividend for equity_id: {ca.equity_id}")
-        #
-        #     # 1. Get all eligible shareholders as of record date
-        #     eligible_shareholders = self._get_eligible_shareholders(ca, session)
-        #
-        #     # 2. Calculate dividend payments
-        #     payment_details = self._calculate_dividend_payments(ca, eligible_shareholders)
-        #
-        #     # 3. Create dividend payment records
-        #     affected_records = self._create_payment_records(ca, payment_details, session)
-        #
-        #     # 4. Update account balances
-        #     self._update_account_balances(payment_details, session)
-        #
-        #     # 5. Update corporate action status
-        #     ca.status = StatusEnum.EXECUTED
-        #     ca.updated_at = datetime.now()
-        #     session.commit()
-        #
-        #     return ExecutionResult(
-        #         success=True,
-        #         message=f"Dividend executed successfully for {affected_records} shareholders",
-        #         execution_time=start_time,
-        #         affected_records=affected_records
-        #     )
-        #
-        # except Exception as e:
-        #     session.rollback()
-        #     logger.error(f"Error executing dividend: {str(e)}")
-        #     return ExecutionResult(
-        #         success=False,
-        #         message=f"Dividend execution failed: {str(e)}",
-        #         execution_time=start_time,
-        #         errors=[str(e)]
-        #     )
+        # Validate dividend amount
+        if self.dividend.dividend_amount <= 0:
+            errors.append("Dividend amount must be positive")
 
-    def rollback(self):
-        pass
-    #     """Rollback dividend execution"""
-    #     try:
-    #         # Implementation for rollback logic
-    #         # This would reverse the dividend payments and account updates
-    #         logger.info(f"Rolling back dividend for equity_id: {ca.equity_id}")
-    #
-    #         # Update status back to pending or cancelled
-    #         ca.status = StatusEnum.CANCELLED
-    #         ca.updated_at = datetime.now()
-    #         session.commit()
-    #
-    #         return ExecutionResult(
-    #             success=True,
-    #             message="Dividend rollback completed",
-    #             execution_time=datetime.now()
-    #         )
-    #
-    #     except Exception as e:
-    #         logger.error(f"Error rolling back dividend: {str(e)}")
-    #         return ExecutionResult(
-    #             success=False,
-    #             message=f"Dividend rollback failed: {str(e)}",
-    #             execution_time=datetime.now(),
-    #             errors=[str(e)]
-    #         )
-    #
-    # # def _get_eligible_shareholders(self, session: Session) -> List[Dict]:
-    # #     """Get shareholders eligible for dividend as of record date"""
-    # #     # Implementation would query shareholder holdings as of record date
-    # #     # This is a placeholder - you'd implement based on your holdings model
-    # #     return []
+        # Validate shares
+        if self.dividend.eligible_outstanding_shares <= 0:
+            errors.append("Eligible outstanding shares must be positive")
 
-    # def _calculate_dividend_payments(self, shareholders: List[Dict]) -> List[Dict]:
-    #     """Calculate dividend payments for each shareholder"""
-    #     payments = []
-    #     for shareholder in shareholders:
-    #         gross_amount = shareholder['shares'] * ca.dividend_amount
-    #         tax_amount = 0
-    #
-    #         if ca.is_taxable and ca.dividend_withholding_rate:
-    #             tax_amount = gross_amount * (ca.dividend_withholding_rate / 100)
-    #
-    #         net_amount = gross_amount - tax_amount
-    #
-    #         payments.append({
-    #             'shareholder_id': shareholder['shareholder_id'],
-    #             'shares': shareholder['shares'],
-    #             'gross_amount': gross_amount,
-    #             'tax_amount': tax_amount,
-    #             'net_amount': net_amount
-    #         })
-    #
-    #     return payments
-    #
-    # def _create_payment_records(self, payments: List[Dict], session: Session) -> int:
-    #     """Create dividend payment records"""
-    #     # Implementation would create payment records in your payment table
-    #     return len(payments)
-    #
-    # def _update_account_balances(self, payments: List[Dict], session: Session):
-    #     """Update shareholder account balances"""
-    #     # Implementation would update account balances
-    #     pass
+        # Validate equity state
+        if not self.equity.market_price or self.equity.market_price <= 0:
+            errors.append("Equity market price must be positive")
+
+        if not self.equity.shares_outstanding or self.equity.shares_outstanding <= 0:
+            errors.append("Equity shares outstanding must be positive")
+
+        # Validate currency consistency
+        if self.dividend.currency != self.equity.currency:
+            errors.append("Dividend currency must match equity currency")
+
+        # Validate dates
+        if self.validation_errors:
+            errors.extend(self.validation_errors)
+
+        self.validation_errors = errors
+        return len(errors) == 0
+
+    @performance_monitor
+    def calculate_impacts(self) -> Dict[str, Any]:
+        """Calculate dividend financial impacts"""
+        # Calculate net dividend amount after tax
+        self._calculate_net_dividend_amount()
+
+        # Calculate total dividend payout
+        self._calculate_total_dividend_marketcap_in_dividend_currency()
+
+        # Calculate market cap impact
+        self._calculate_market_cap_impact_in_equity_currency()
+
+        # Calculate price adjustment
+        self._calculate_price_adjustment()
+
+        impact_data = {
+            'gross_dividend_amount': float(self.dividend.dividend_amount),
+            'net_dividend_amount': float(self.net_dividend_amount),
+            'eligible_shares': float(self.eligible_outstanding_shares),
+            'total_dividend_payout': float(self.total_dividend_marketcap_in_dividend_currency),
+            'market_cap_impact': float(self.dividend_impact_in_equity_currency),
+            'price_adjustment': float(self.price_adjustment),
+            'tax_rate': self.dividend.dividend_tax_rate or 0.0,
+            'is_gross_amount': self.dividend.is_gross_dividend_amount
+        }
+
+        return impact_data
+
+    def execute_action(self) -> Dict[str, Any]:
+        """Execute dividend payment and adjust equity values"""
+        original_state = {
+            'market_price': float(self.equity.market_price),
+            'market_cap': float(self.equity.market_cap) if self.equity.market_cap else None,
+            'shares_outstanding': float(self.equity.shares_outstanding)
+        }
+
+        # Apply dividend adjustments
+        self._apply_dividend_adjustments()
+
+        # Update dividend model with calculated values
+        self.dividend.net_dividend_amount = self.net_dividend_amount
+        self.dividend.total_dividend_payout = self.total_dividend_marketcap_in_dividend_currency
+
+        new_state = {
+            'market_price': float(self.equity.market_price),
+            'market_cap': float(self.equity.market_cap) if self.equity.market_cap else None,
+            'shares_outstanding': float(self.equity.shares_outstanding)
+        }
+
+        return {
+            'original_state': original_state,
+            'new_state': new_state,
+            'adjustments_applied': {
+                'price_adjustment': float(self.price_adjustment),
+                'market_cap_reduction': float(self.dividend_impact_in_equity_currency)
+            }
+        }
+
+    def post_execution_validation(self) -> bool:
+        """Validate execution results"""
+        errors = []
+
+        # Validate that price was adjusted correctly
+        expected_new_price = self.equity.market_price
+        if abs(float(expected_new_price) - float(self.equity.market_price)) > 0.01:
+            errors.append("Price adjustment validation failed")
+
+        # Validate market cap consistency
+        calculated_market_cap = self.equity.market_price * self.equity.shares_outstanding
+        if self.equity.market_cap and abs(float(calculated_market_cap) - float(self.equity.market_cap)) > 0.01:
+            errors.append("Market cap consistency validation failed")
+
+        # Validate dividend calculations
+        if abs(float(self.dividend.total_dividend_payout) - float(
+                self.total_dividend_marketcap_in_dividend_currency)) > 0.01:
+            errors.append("Dividend payout calculation validation failed")
+
+        if errors:
+            logger.error(f"Post-execution validation failed: {errors}")
+            return False
+
+        return True
+
+    def _calculate_net_dividend_amount(self):
+        """Calculate net dividend amount after tax"""
+        tax_rate = Decimal('0.0')
+
+        if self.dividend.is_taxable and self.dividend.dividend_tax_rate:
+            tax_rate = Decimal(str(self.dividend.dividend_tax_rate))
+
+        dividend_amount = Decimal(str(self.dividend.dividend_amount))
+
+        if self.dividend.is_gross_dividend_amount:
+            self.net_dividend_amount = dividend_amount * (Decimal('1.0') - tax_rate)
+        else:
+            self.net_dividend_amount = dividend_amount
+
+    def _calculate_total_dividend_marketcap_in_dividend_currency(self):
+        """calculate_total_dividend_marketcap_in_dividend_currency"""
+        self.eligible_outstanding_shares = Decimal(str(self.dividend.eligible_outstanding_shares))
+        self.total_dividend_marketcap_in_dividend_currency = self.net_dividend_amount * self.eligible_outstanding_shares
+
+    def _calculate_market_cap_impact_in_equity_currency(self):
+        """Calculate market cap impact (reduction due to cash outflow)"""
+        # TODO add logic 
+        dividend_to_equity_exchange_rate = 1
+        self.dividend_impact_in_equity_currency = self.total_dividend_marketcap_in_dividend_currency * dividend_to_equity_exchange_rate
+
+    def _calculate_price_adjustment(self):
+        """Calculate price adjustment per share"""
+        # Price should be reduced by the net dividend amount
+        self.price_adjustment = self.dividend_impact_in_equity_currency / self.equity.shares_outstanding
+
+    def _apply_dividend_adjustments(self):
+        """Apply dividend adjustments to equity"""
+        # Adjust market price (reduce by dividend amount)
+        new_price = self.equity.market_price - self.price_adjustment
+        self.equity.market_price = max(Decimal('0.01'), new_price)  # Ensure price doesn't go negative
+
+        # Market cap is automatically recalculated due to the event listener
+        # But we can also set it explicitly
+        if self.equity.shares_outstanding:
+            self.equity.market_cap = self.equity.market_price * self.equity.shares_outstanding
