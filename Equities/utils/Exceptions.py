@@ -18,6 +18,21 @@ class DividendValidationError(CorporateActionValidationError):
     pass
 
 
+class SpecialDividendValidationError(CorporateActionValidationError):
+    """Exception raised for special dividend validation errors"""
+    pass
+
+
+class DistributionValidationError(CorporateActionValidationError):
+    """Exception raised for distribution validation errors"""
+    pass
+
+
+class ReturnOfCapitalValidationError(CorporateActionValidationError):
+    """Exception raised for return of capital validation errors"""
+    pass
+
+
 class ProcessingLockError(CorporateActionError):
     """Exception raised when equity is locked for processing"""
     pass

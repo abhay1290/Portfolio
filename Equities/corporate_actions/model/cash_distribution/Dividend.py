@@ -2,6 +2,7 @@ from sqlalchemy import Boolean, Column, Date, Float, ForeignKey, Integer, NUMERI
 from sqlalchemy.orm import validates
 
 from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
+from Equities.utils.Exceptions import DividendValidationError
 
 
 class Dividend(CorporateActionBase):
@@ -28,7 +29,7 @@ class Dividend(CorporateActionBase):
 
     # Calculated fields (populated during processing)
     net_dividend_amount = Column(NUMERIC(precision=20, scale=6), nullable=True)
-    dividend_marketcap_dividend_currency = Column(NUMERIC(precision=20, scale=2), nullable=True)
+    dividend_marketcap_in_dividend_currency = Column(NUMERIC(precision=20, scale=2), nullable=True)
 
     @validates('dividend_amount')
     def validate_dividend_amount(self, key, dividend_amount):
@@ -43,9 +44,9 @@ class Dividend(CorporateActionBase):
         return eligible_shares
 
     @validates('dividend_tax_rate')
-    def validate_tax_rates(self, key, tax_rate):
+    def validate_tax_rates(self, tax_rate):
         if tax_rate is not None and not (0.0 <= tax_rate <= 1.0):
-            raise DividendValidationError(f"{key} must be between 0.0 and 1.0")
+            raise DividendValidationError("Tax rate must be between 0.0 and 1.0")
         return tax_rate
 
     @validates('payment_date', 'declaration_date')
@@ -67,7 +68,11 @@ class Dividend(CorporateActionBase):
             self.net_dividend_amount = self.dividend_amount
 
         # Calculate total payout
-        self.dividend_marketcap_dividend_currency = self.net_dividend_amount * self.eligible_outstanding_shares
+        self.dividend_marketcap_in_dividend_currency = self.net_dividend_amount * self.eligible_outstanding_shares
 
     def __repr__(self):
-        return f"<Dividend(id={self.corporate_action_id}, amount={self.dividend_amount}, payment_date='{self.payment_date}')>"
+        return (
+            f"<Dividend(id={self.corporate_action_id}, "
+            f"amount={self.dividend_amount}, "
+            f"payment_date='{self.payment_date}')>"
+        )

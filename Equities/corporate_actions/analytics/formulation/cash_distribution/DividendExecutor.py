@@ -22,7 +22,7 @@ class DividendExecutor(CorporateActionExecutorBase):
         # Initialize calculation results
         self.net_dividend_amount = None
         self.eligible_outstanding_shares = None
-        self.total_dividend_marketcap_in_dividend_currency = None
+        self.dividend_marketcap_in_ca_currency = None
         self.dividend_impact_in_equity_currency = None
         self.price_adjustment = None
 
@@ -102,7 +102,7 @@ class DividendExecutor(CorporateActionExecutorBase):
             'gross_dividend_amount': float(self.dividend.dividend_amount),
             'net_dividend_amount': float(self.net_dividend_amount),
             'eligible_shares': float(self.eligible_outstanding_shares),
-            'total_dividend_payout': float(self.total_dividend_marketcap_in_dividend_currency),
+            'dividend_marketcap_in_ca_currency': float(self.dividend_marketcap_in_ca_currency),
             'market_cap_impact': float(self.dividend_impact_in_equity_currency),
             'price_adjustment': float(self.price_adjustment),
             'tax_rate': self.dividend.dividend_tax_rate or 0.0,
@@ -124,7 +124,7 @@ class DividendExecutor(CorporateActionExecutorBase):
 
         # Update dividend model with calculated values
         self.dividend.net_dividend_amount = self.net_dividend_amount
-        self.dividend.total_dividend_payout = self.total_dividend_marketcap_in_dividend_currency
+        self.dividend.dividend_marketcap_in_dividend_currency = self.dividend_marketcap_in_ca_currency
 
         new_state = {
             'market_price': float(self.equity.market_price),
@@ -157,7 +157,7 @@ class DividendExecutor(CorporateActionExecutorBase):
 
         # Validate dividend calculations
         if abs(float(self.dividend.total_dividend_payout) - float(
-                self.total_dividend_marketcap_in_dividend_currency)) > 0.01:
+                self.dividend_marketcap_in_ca_currency)) > 0.01:
             errors.append("Dividend payout calculation validation failed")
 
         if errors:
@@ -183,13 +183,13 @@ class DividendExecutor(CorporateActionExecutorBase):
     def _calculate_total_dividend_marketcap_in_dividend_currency(self):
         """calculate_total_dividend_marketcap_in_dividend_currency"""
         self.eligible_outstanding_shares = Decimal(str(self.dividend.eligible_outstanding_shares))
-        self.total_dividend_marketcap_in_dividend_currency = self.net_dividend_amount * self.eligible_outstanding_shares
+        self.dividend_marketcap_in_ca_currency = self.net_dividend_amount * self.eligible_outstanding_shares
 
     def _calculate_market_cap_impact_in_equity_currency(self):
         """Calculate market cap impact (reduction due to cash outflow)"""
-        # TODO add logic 
+        # TODO: Add currency conversion logic
         dividend_to_equity_exchange_rate = 1
-        self.dividend_impact_in_equity_currency = self.total_dividend_marketcap_in_dividend_currency * dividend_to_equity_exchange_rate
+        self.dividend_impact_in_equity_currency = self.dividend_marketcap_in_ca_currency * dividend_to_equity_exchange_rate
 
     def _calculate_price_adjustment(self):
         """Calculate price adjustment per share"""

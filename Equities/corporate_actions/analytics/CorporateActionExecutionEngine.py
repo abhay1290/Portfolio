@@ -1,4 +1,5 @@
 from Equities.corporate_actions.analytics.formulation.CorporateActionExecutorBase import CorporateActionExecutorBase
+from Equities.corporate_actions.analytics.formulation.cash_distribution.DistributionExecutor import DistributionExecutor
 from Equities.corporate_actions.analytics.formulation.cash_distribution.DividendExecutor import DividendExecutor
 from Equities.corporate_actions.analytics.formulation.cash_distribution.ReturnOfCapitalExecutor import \
     ReturnOfCapitalExecutor
@@ -37,7 +38,7 @@ def ca_execution_engine(ca: CorporateActionBase) -> CorporateActionExecutorBase:
     if ca.action_type == CorporateActionTypeEnum.DIVIDEND:
         return DividendExecutor(ca)
     elif ca.action_type == CorporateActionTypeEnum.DISTRIBUTION:
-        return DividendExecutor(ca)
+        return DistributionExecutor(ca)
     elif ca.action_type == CorporateActionTypeEnum.RETURN_OF_CAPITAL:
         return ReturnOfCapitalExecutor(ca)
     elif ca.action_type == CorporateActionTypeEnum.SPECIAL_DIVIDEND:
