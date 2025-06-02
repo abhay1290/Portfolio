@@ -9,25 +9,49 @@ from Equities.api.corporate_action_schema.corporate_action_schema import Corpora
 
 class DividendRequest(CorporateActionRequest):
     # Financial Dividend Info
-    is_gross_dividend_amount: bool = Field(default=True,
-                                           description="True if dividend_amount is gross amount, False if net amount")
-    dividend_amount: condecimal(max_digits=20, decimal_places=6) = Field(..., gt=0,
-                                                                         description="Per-share dividend amount in the security's currency")
-    eligible_outstanding_shares: float = Field(..., ge=0,
-                                               description="Number of outstanding shares eligible for dividend payment at declaration date")
+    is_gross_dividend_amount: bool = Field(
+        default=True,
+        description="True if dividend_amount is gross amount (pre-tax), False if net amount"
+    )
+    dividend_amount: condecimal(max_digits=20, decimal_places=6) = Field(
+        ...,
+        gt=0,
+        description="Per-share dividend amount in the security's currency"
+    )
+    eligible_outstanding_shares: float = Field(
+        ...,
+        gt=0,  # Changed from ge=0 to gt=0 to match SQLAlchemy validation
+        description="Number of outstanding shares eligible for dividend payment"
+    )
 
     # Dividend Dates
-    declaration_date: date = Field(..., description="Date when dividend was formally declared by the board")
-    ex_dividend_date: Optional[date] = Field(None, description="First date when shares trade without dividend rights")
-    payment_date: date = Field(..., description="Date when dividend will be paid to shareholders")
+    declaration_date: date = Field(
+        ...,
+        description="Date when dividend was formally declared by the board"
+    )
+    ex_dividend_date: Optional[date] = Field(
+        None,
+        description="First date when shares trade without dividend rights"
+    )
+    payment_date: date = Field(
+        ...,
+        description="Date when dividend will be paid to shareholders"
+    )
 
     # Tax Information
-    dividend_tax_rate: Optional[float] = Field(None, ge=0.0, le=1.0,
-                                               description="Tax rate (0.0 to 1.0) for investors")
+    dividend_tax_rate: Optional[float] = Field(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="Tax rate (0.0 to 1.0) for investors"
+    )
 
     # Metadata
-    dividend_notes: Optional[str] = Field(None, max_length=500,
-                                          description="Additional notes about the dividend declaration")
+    dividend_notes: Optional[str] = Field(
+        None,
+        max_length=2000,  # Updated to match SQLAlchemy Text field
+        description="Additional notes about the dividend declaration"
+    )
 
     # Field Validations
     @classmethod
@@ -51,18 +75,26 @@ class DividendRequest(CorporateActionRequest):
 
 
 class DividendResponse(CorporateActionResponse):
-    # Inherits all fields from CorporateActionResponse
-    corporate_action_id: int = Field(..., description="Foreign key to corporate action")
-
-    # Mirror all fields from DividendRequest
+    # Financial Information
     is_gross_dividend_amount: bool
     dividend_amount: Decimal
     eligible_outstanding_shares: float
+    net_dividend_amount: Optional[Decimal] = Field(
+        None,
+        description="Calculated net dividend amount after tax"
+    )
+    dividend_marketcap_in_dividend_currency: Optional[Decimal] = Field(
+        None,
+        description="Total dividend payout (net_dividend_amount * eligible_outstanding_shares)"
+    )
 
+    # Dividend Dates
     declaration_date: date
     ex_dividend_date: Optional[date] = None
     payment_date: date
 
+    # Tax Information
     dividend_tax_rate: Optional[float] = None
 
+    # Metadata
     dividend_notes: Optional[str] = None
