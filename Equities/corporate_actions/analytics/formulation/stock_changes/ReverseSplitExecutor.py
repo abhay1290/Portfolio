@@ -1,20 +1,176 @@
+import logging
+from datetime import datetime
+from decimal import Decimal
+from typing import Any, Dict
+
 from Equities.corporate_actions.analytics.formulation.CorporateActionExecutorBase import CorporateActionExecutorBase
 from Equities.corporate_actions.model.stock_changes.ReverseSplit import ReverseSplit
+from Equities.utils.Decorators import performance_monitor
+from Equities.utils.Exceptions import ReverseSplitValidationError
+
+logger = logging.getLogger(__name__)
 
 
 class ReverseSplitExecutor(CorporateActionExecutorBase):
-    def __init__(self, ca: ReverseSplit):
-        super().__init__(ca)
+    def _initialize_executor(self):
+        """Initialize reverse split-specific attributes"""
+        if not isinstance(self.corporate_action, ReverseSplit):
+            raise ReverseSplitValidationError("Must provide a ReverseSplit instance")
 
-        if not isinstance(ca, ReverseSplit):
-            raise ValueError("Must provide a  ReverseSplit instance")
+        self.reverse_split = self.corporate_action
 
-        self.reverse_split = ca
+        # Initialize calculation results
+        self.new_shares_outstanding = None
+        self.new_market_price = None
+        self.fractional_shares = None
+        self.cash_in_lieu_amount = None
 
-        self._validate_inputs()
+        # Validation and adjustment
+        self._adjust_and_validate_dates()
 
-    def execute(self):
-        pass
+    def _adjust_and_validate_dates(self):
+        """Validate and adjust reverse split dates"""
+        self.reverse_split.ex_split_date = self._adjust_date(
+            datetime.combine(self.reverse_split.ex_split_date, datetime.min.time())
+        )
 
-    def rollback(self):
-        pass
+        self.reverse_split.effective_date = self._adjust_date(
+            datetime.combine(self.reverse_split.effective_date, datetime.min.time())
+        )
+
+        if self.reverse_split.ex_split_date > self.reverse_split.effective_date:
+            self.validation_errors.append("Ex-split date must be before or equal to effective date")
+
+    def validate_prerequisites(self) -> bool:
+        """Validate prerequisites for reverse split execution"""
+        errors = []
+
+        # Validate split ratios
+        if self.reverse_split.reverse_ratio_from <= 0:
+            errors.append("Reverse ratio from must be positive")
+
+        if self.reverse_split.reverse_ratio_to <= 0:
+            errors.append("Reverse ratio to must be positive")
+
+        if self.reverse_split.reverse_ratio_from <= self.reverse_split.reverse_ratio_to:
+            errors.append("Reverse split ratio must reduce shares (from > to)")
+
+        # Validate equity state
+        if not self.equity.market_price or self.equity.market_price <= 0:
+            errors.append("Equity market price must be positive")
+
+        if not self.equity.shares_outstanding or self.equity.shares_outstanding <= 0:
+            errors.append("Equity shares outstanding must be positive")
+
+        # Validate dates
+        if self.validation_errors:
+            errors.extend(self.validation_errors)
+
+        self.validation_errors = errors
+        return len(errors) == 0
+
+    @performance_monitor
+    def calculate_impacts(self) -> Dict[str, Any]:
+        """Calculate reverse split financial impacts"""
+        # Calculate new share count
+        self._calculate_new_shares_outstanding()
+
+        # Calculate new price
+        self._calculate_new_market_price()
+
+        # Calculate fractional shares and cash in lieu
+        self._calculate_fractional_shares_and_cash()
+
+        impact_data = {
+            'old_shares_outstanding': float(self.equity.shares_outstanding),
+            'new_shares_outstanding': float(self.new_shares_outstanding),
+            'old_market_price': float(self.equity.market_price),
+            'new_market_price': float(self.new_market_price),
+            'reverse_multiplier': float(self.reverse_split.reverse_multiplier),
+            'fractional_shares': float(self.fractional_shares) if self.fractional_shares else 0.0,
+            'cash_in_lieu_total': float(self.cash_in_lieu_amount) if self.cash_in_lieu_amount else 0.0
+        }
+
+        return impact_data
+
+    def execute_action(self) -> Dict[str, Any]:
+        """Execute reverse split and adjust equity values"""
+        original_state = {
+            'market_price': float(self.equity.market_price),
+            'shares_outstanding': float(self.equity.shares_outstanding),
+            'market_cap': float(self.equity.market_cap) if self.equity.market_cap else None
+        }
+
+        # Apply reverse split adjustments
+        self._apply_reverse_split_adjustments()
+
+        new_state = {
+            'market_price': float(self.equity.market_price),
+            'shares_outstanding': float(self.equity.shares_outstanding),
+            'market_cap': float(self.equity.market_cap) if self.equity.market_cap else None
+        }
+
+        return {
+            'original_state': original_state,
+            'new_state': new_state,
+            'adjustments_applied': {
+                'shares_reduction': float(original_state['shares_outstanding'] - new_state['shares_outstanding']),
+                'price_increase': float(new_state['market_price'] - original_state['market_price']),
+                'cash_in_lieu_paid': float(self.cash_in_lieu_amount) if self.cash_in_lieu_amount else 0.0
+            }
+        }
+
+    def post_execution_validation(self) -> bool:
+        """Validate execution results"""
+        errors = []
+
+        # Validate market cap preservation (approximately)
+        original_market_cap = self.equity.market_price * self.equity.shares_outstanding
+        expected_market_cap = float(self.equity.market_price) * float(self.equity.shares_outstanding)
+
+        if abs(float(original_market_cap) - expected_market_cap) > 0.01:
+            errors.append("Market cap preservation validation failed")
+
+        # Validate share count reduction
+        if self.equity.shares_outstanding >= self.new_shares_outstanding:
+            errors.append("Shares outstanding should be reduced after reverse split")
+
+        if errors:
+            logger.error(f"Post-execution validation failed: {errors}")
+            return False
+
+        return True
+
+    def _calculate_new_shares_outstanding(self):
+        """Calculate new shares outstanding after reverse split"""
+        self.new_shares_outstanding = Decimal(str(self.equity.shares_outstanding)) * Decimal(
+            str(self.reverse_split.reverse_multiplier))
+
+    def _calculate_new_market_price(self):
+        """Calculate new market price after reverse split"""
+        self.new_market_price = Decimal(str(self.equity.market_price)) / Decimal(
+            str(self.reverse_split.reverse_multiplier))
+
+    def _calculate_fractional_shares_and_cash(self):
+        """Calculate fractional shares and cash in lieu payments"""
+        if self.reverse_split.cash_in_lieu_rate:
+            # Calculate fractional shares that will be paid in cash
+            total_old_shares = Decimal(str(self.equity.shares_outstanding))
+            shares_per_new_share = Decimal(str(self.reverse_split.reverse_ratio_from))
+
+            fractional_part = total_old_shares % shares_per_new_share
+            self.fractional_shares = fractional_part / shares_per_new_share
+
+            if self.fractional_shares > 0:
+                self.cash_in_lieu_amount = self.fractional_shares * Decimal(str(self.reverse_split.cash_in_lieu_rate))
+
+    def _apply_reverse_split_adjustments(self):
+        """Apply reverse split adjustments to equity"""
+        # Update shares outstanding
+        self.equity.shares_outstanding = self.new_shares_outstanding
+
+        # Update market price
+        self.equity.market_price = self.new_market_price
+
+        # Market cap should remain approximately the same
+        self.equity.market_cap = self.equity.market_price * self.equity.shares_outstanding
