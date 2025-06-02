@@ -1,8 +1,6 @@
 from sqlalchemy import Column, Date, ForeignKey, Integer, NUMERIC, Text
-from sqlalchemy.orm import validates
 
 from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
-from Equities.utils.Exceptions import SubscriptionValidationError
 
 
 class Subscription(CorporateActionBase):
@@ -37,29 +35,29 @@ class Subscription(CorporateActionBase):
     subscription_purpose = Column(Text, nullable=True)
     subscription_notes = Column(Text, nullable=True)
 
-    @validates('subscription_price')
-    def validate_subscription_price(self, value):
-        if value is None or value <= 0:
-            raise SubscriptionValidationError("Subscription price must be positive")
-        return value
-
-    @validates('subscription_ratio')
-    def validate_subscription_ratio(self, value):
-        if value is None or value <= 0:
-            raise SubscriptionValidationError("Subscription ratio must be positive")
-        return value
-
-    @validates('minimum_subscription', 'maximum_subscription')
-    def validate_subscription_limits(self, key, value):
-        if value is not None and value <= 0:
-            raise SubscriptionValidationError(f"{key} must be positive if specified")
-        return value
-
-    @validates('offer_date', 'subscription_deadline', 'payment_deadline')
-    def validate_dates(self, key, date_value):
-        if date_value is None:
-            raise SubscriptionValidationError(f"{key} cannot be None")
-        return date_value
+    # @validates('subscription_price')
+    # def validate_subscription_price(self, key, value):
+    #     if value is None or value <= 0:
+    #         raise SubscriptionValidationError("Subscription price must be positive")
+    #     return value
+    #
+    # @validates('subscription_ratio')
+    # def validate_subscription_ratio(self, key, value):
+    #     if value is None or value <= 0:
+    #         raise SubscriptionValidationError("Subscription ratio must be positive")
+    #     return value
+    #
+    # @validates('minimum_subscription', 'maximum_subscription')
+    # def validate_subscription_limits(self, key, value):
+    #     if value is not None and value <= 0:
+    #         raise SubscriptionValidationError(f"{key} must be positive if specified")
+    #     return value
+    #
+    # @validates('offer_date', 'subscription_deadline', 'payment_deadline')
+    # def validate_dates(self, key, date_value):
+    #     if date_value is None:
+    #         raise SubscriptionValidationError(f"{key} cannot be None")
+    #     return date_value
 
     def calculate_subscription_premium(self, market_price):
         """Calculate premium over market price"""

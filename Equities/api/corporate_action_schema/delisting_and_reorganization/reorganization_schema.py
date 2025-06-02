@@ -31,7 +31,7 @@ class ReorganizationRequest(CorporateActionRequest):
                                                      description="Date of shareholder meeting to approve the reorganization")
     shareholder_approval_date: Optional[date] = Field(None, description="Date shareholders approved the reorganization")
     effective_date: date = Field(..., description="Date reorganization becomes effective")
-
+    completion_date: date = Field(..., description="Date reorganization is considered completed")
     # Tax implications
     is_tax_free: bool = Field(False, description="Whether the reorganization qualifies as tax-free")
     regulatory_approval_required: bool = Field(True, description="Whether regulatory approval is required")
@@ -137,7 +137,6 @@ class ReorganizationResponse(CorporateActionResponse):
 
     # Dates
     announcement_date: date
-    record_date: Optional[date] = None
     shareholder_meeting_date: Optional[date] = None
     shareholder_approval_date: Optional[date] = None
     effective_date: date

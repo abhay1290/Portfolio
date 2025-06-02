@@ -1,5 +1,4 @@
 from sqlalchemy import Boolean, Column, Date, Float, ForeignKey, Integer, NUMERIC, String, Text
-from sqlalchemy.orm import validates
 
 from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
 from Equities.utils.Exceptions import ExchangeOfferValidationError
@@ -35,29 +34,29 @@ class ExchangeOffer(CorporateActionBase):
     implied_premium = Column(Float, nullable=True)
     participation_rate = Column(Float, nullable=True)
 
-    @validates('exchange_ratio')
-    def validate_exchange_ratio(self, ratio):
-        if ratio is None or ratio <= 0:
-            raise ExchangeOfferValidationError("Exchange ratio must be positive")
-        return ratio
-
-    @validates('cash_component')
-    def validate_cash_component(self, cash):
-        if cash is not None and cash < 0:
-            raise ExchangeOfferValidationError("Cash component cannot be negative")
-        return cash
-
-    @validates('minimum_participation')
-    def validate_minimum_participation(self, participation):
-        if participation is not None and (participation <= 0 or participation > 1):
-            raise ExchangeOfferValidationError("Minimum participation must be between 0 and 1")
-        return participation
-
-    @validates('offer_date', 'expiration_date')
-    def validate_dates(self, key, date_value):
-        if date_value is None:
-            raise ExchangeOfferValidationError(f"{key} cannot be None")
-        return date_value
+    # @validates('exchange_ratio')
+    # def validate_exchange_ratio(self, key, ratio):
+    #     if ratio is None or ratio <= 0:
+    #         raise ExchangeOfferValidationError("Exchange ratio must be positive")
+    #     return ratio
+    #
+    # @validates('cash_component')
+    # def validate_cash_component(self, key, cash):
+    #     if cash is not None and cash < 0:
+    #         raise ExchangeOfferValidationError("Cash component cannot be negative")
+    #     return cash
+    #
+    # @validates('minimum_participation')
+    # def validate_minimum_participation(self, key, participation):
+    #     if participation is not None and (participation <= 0 or participation > 1):
+    #         raise ExchangeOfferValidationError("Minimum participation must be between 0 and 1")
+    #     return participation
+    #
+    # @validates('offer_date', 'expiration_date')
+    # def validate_dates(self, key, date_value):
+    #     if date_value is None:
+    #         raise ExchangeOfferValidationError(f"{key} cannot be None")
+    #     return date_value
 
     def calculate_implied_premium(self, new_security_price: float):
         """Calculate the implied premium based on new security price"""

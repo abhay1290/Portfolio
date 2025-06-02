@@ -51,7 +51,7 @@ class SpecialDividendRequest(CorporateActionRequest):
         return v
 
     @model_validator(mode='after')
-    def validate_tax_related_fields(self) -> 'SpecialDividendRequest':
+    def validate_tax_related_fields(self):
         if self.dividend_tax_rate is not None and self.dividend_tax_rate > 0:
             if not self.is_gross_dividend_amount:
                 raise ValueError("Tax rate should only be provided for gross dividend amounts")

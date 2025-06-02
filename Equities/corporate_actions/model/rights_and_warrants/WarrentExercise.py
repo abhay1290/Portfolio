@@ -1,8 +1,6 @@
 from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, NUMERIC, Text
-from sqlalchemy.orm import validates
 
 from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
-from Equities.utils.Exceptions import WarrantValidationError
 
 
 class WarrantExercise(CorporateActionBase):
@@ -41,23 +39,24 @@ class WarrantExercise(CorporateActionBase):
     warrant_terms = Column(Text, nullable=True)
     exercise_notes = Column(Text, nullable=True)
 
-    @validates('exercise_price')
-    def validate_exercise_price(self, value):
-        if value is None or value <= 0:
-            raise WarrantValidationError("Exercise price must be positive")
-        return value
-
-    @validates('warrant_ratio', 'exercise_ratio')
-    def validate_ratios(self, key, value):
-        if value is None or value <= 0:
-            raise WarrantValidationError(f"{key} must be positive")
-        return value
-
-    @validates('ex_warrant_date', 'exercise_deadline')
-    def validate_dates(self, key, date_value):
-        if date_value is None:
-            raise WarrantValidationError(f"{key} cannot be None")
-        return date_value
+    #
+    # @validates('exercise_price')
+    # def validate_exercise_price(self, key, value):
+    #     if value is None or value <= 0:
+    #         raise WarrantValidationError("Exercise price must be positive")
+    #     return value
+    #
+    # @validates('warrant_ratio', 'exercise_ratio')
+    # def validate_ratios(self, key, value):
+    #     if value is None or value <= 0:
+    #         raise WarrantValidationError(f"{key} must be positive")
+    #     return value
+    #
+    # @validates('ex_warrant_date', 'exercise_deadline')
+    # def validate_dates(self, key, date_value):
+    #     if date_value is None:
+    #         raise WarrantValidationError(f"{key} cannot be None")
+    #     return date_value
 
     def calculate_theoretical_warrant_value(self, market_price):
         """Calculate theoretical warrant value"""

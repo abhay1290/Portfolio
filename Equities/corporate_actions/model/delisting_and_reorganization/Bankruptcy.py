@@ -1,8 +1,6 @@
 from sqlalchemy import Boolean, Column, Date, Float, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import validates
 
 from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
-from Equities.utils.Exceptions import BankruptcyValidationError
 
 
 class Bankruptcy(CorporateActionBase):
@@ -35,28 +33,28 @@ class Bankruptcy(CorporateActionBase):
     bankruptcy_notes = Column(Text, nullable=True)
 
 
-@validates('bankruptcy_type')
-def validate_bankruptcy_type(bankruptcy_type):
-    if bankruptcy_type not in ['Chapter 7', 'Chapter 11', 'Chapter 13', 'Other']:
-        raise BankruptcyValidationError("Invalid bankruptcy type")
-    return bankruptcy_type
+# @validates('bankruptcy_type')
+# def validate_bankruptcy_type(bankruptcy_type):
+#     if bankruptcy_type not in ['Chapter 7', 'Chapter 11', 'Chapter 13', 'Other']:
+#         raise BankruptcyValidationError("Invalid bankruptcy type")
+#     return bankruptcy_type
+#
+#
+# @validates('estimated_recovery_rate')
+# def validate_recovery_rate(rate):
+#     if rate is not None and (rate < 0 or rate > 1):
+#         raise BankruptcyValidationError("Recovery rate must be between 0 and 1")
+#     return rate
+#
+#
+# @validates('filing_date', 'court_approval_date', 'plan_effective_date')
+# def validate_dates(self, key, date_value):
+#     if date_value is not None and key == 'filing_date' and date_value > self.execution_date:
+#         raise BankruptcyValidationError("Filing date cannot be after execution date")
+#     return date_value
 
 
-@validates('estimated_recovery_rate')
-def validate_recovery_rate(rate):
-    if rate is not None and (rate < 0 or rate > 1):
-        raise BankruptcyValidationError("Recovery rate must be between 0 and 1")
-    return rate
-
-
-@validates('filing_date', 'court_approval_date', 'plan_effective_date')
-def validate_dates(self, key, date_value):
-    if date_value is not None and key == 'filing_date' and date_value > self.execution_date:
-        raise BankruptcyValidationError("Filing date cannot be after execution date")
-    return date_value
-
-
-def calculate_recovery_value(self, equity_value):
+def calculate_recovery_value(self, key, equity_value):
     """Calculate estimated recovery value based on equity value"""
     if self.estimated_recovery_rate is not None:
         self.estimated_recovery_value = equity_value * self.estimated_recovery_rate

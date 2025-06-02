@@ -1,8 +1,6 @@
 from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, NUMERIC, String, Text
-from sqlalchemy.orm import validates
 
 from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
-from Equities.utils.Exceptions import LiquidationValidationError
 
 
 class Liquidation(CorporateActionBase):
@@ -40,19 +38,19 @@ class Liquidation(CorporateActionBase):
     liquidation_reason = Column(Text, nullable=True)
     liquidation_notes = Column(Text, nullable=True)
 
-    @validates('liquidation_value_per_share', 'cash_distribution', 'asset_distribution_value')
-    def validate_values(self, key, value):
-        if value is not None and value < 0:
-            raise LiquidationValidationError(f"{key} cannot be negative")
-        return value
+    # @validates('liquidation_value_per_share', 'cash_distribution', 'asset_distribution_value')
+    # def validate_values(self, key, value):
+    #     if value is not None and value < 0:
+    #         raise LiquidationValidationError(f"{key} cannot be negative")
+    #     return value
+    #
+    # @validates('announcement_date', 'effective_date')
+    # def validate_dates(self, key, date_value):
+    #     if date_value is None:
+    #         raise LiquidationValidationError(f"{key} cannot be None")
+    #     return date_value
 
-    @validates('announcement_date', 'effective_date')
-    def validate_dates(self, key, date_value):
-        if date_value is None:
-            raise LiquidationValidationError(f"{key} cannot be None")
-        return date_value
-
-    def calculate_recovery_rate(self, face_value):
+    def calculate_recovery_rate(self, key, face_value):
         """Calculate recovery rate based on distributions"""
         if face_value and face_value > 0 and self.cash_distribution is not None:
             total_distribution = self.cash_distribution

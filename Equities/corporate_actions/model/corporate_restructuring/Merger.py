@@ -1,7 +1,6 @@
 from decimal import Decimal
 
 from sqlalchemy import Boolean, Column, Date, Enum, Float, ForeignKey, Integer, NUMERIC, String, Text
-from sqlalchemy.orm import validates
 
 from Equities.corporate_actions.enums.MergerTypeEnum import MergerTypeEnum
 from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
@@ -43,26 +42,26 @@ class Merger(CorporateActionBase):
     merger_terms = Column(Text, nullable=True)
     merger_notes = Column(Text, nullable=True)
 
-    @validates('cash_consideration')
-    def validate_cash_consideration(self, key, cash):
-        if cash is not None and cash < 0:
-            raise MergerValidationError("Cash consideration cannot be negative")
-        return cash
-
-    @validates('stock_consideration_ratio')
-    def validate_stock_ratio(self, key, ratio):
-        if ratio is not None and ratio <= 0:
-            raise MergerValidationError("Stock consideration ratio must be positive")
-        return ratio
-
-    @validates('effective_date', 'announcement_date')
-    def validate_dates(self, key, date_value):
-        if date_value is None:
-            raise MergerValidationError(f"{key} cannot be None")
-
-        if key == 'announcement_date' and self.effective_date and date_value >= self.effective_date:
-            raise MergerValidationError("Announcement date must be before effective date")
-        return date_value
+    # @validates('cash_consideration')
+    # def validate_cash_consideration(self, key, cash):
+    #     if cash is not None and cash < 0:
+    #         raise MergerValidationError("Cash consideration cannot be negative")
+    #     return cash
+    #
+    # @validates('stock_consideration_ratio')
+    # def validate_stock_ratio(self, key, ratio):
+    #     if ratio is not None and ratio <= 0:
+    #         raise MergerValidationError("Stock consideration ratio must be positive")
+    #     return ratio
+    #
+    # @validates('effective_date', 'announcement_date')
+    # def validate_dates(self, key, date_value):
+    #     if date_value is None:
+    #         raise MergerValidationError(f"{key} cannot be None")
+    #
+    #     if key == 'announcement_date' and self.effective_date and date_value >= self.effective_date:
+    #         raise MergerValidationError("Announcement date must be before effective date")
+    #     return date_value
 
     def calculate_total_consideration(self, acquirer_price: float = None):
         """Calculate total consideration value"""

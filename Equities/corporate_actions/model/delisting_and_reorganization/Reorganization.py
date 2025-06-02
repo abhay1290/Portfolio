@@ -1,8 +1,6 @@
 from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, NUMERIC, String, Text
-from sqlalchemy.orm import validates
 
 from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
-from Equities.utils.Exceptions import ReorganizationValidationError
 
 
 class Reorganization(CorporateActionBase):
@@ -42,23 +40,23 @@ class Reorganization(CorporateActionBase):
     reorganization_purpose = Column(Text, nullable=True)
     reorganization_notes = Column(Text, nullable=True)
 
-    @validates('exchange_ratio')
-    def validate_exchange_ratio(self, value):
-        if value is not None and value <= 0:
-            raise ReorganizationValidationError("Exchange ratio must be positive if specified")
-        return value
-
-    @validates('cash_component')
-    def validate_cash_component(self, value):
-        if value is not None and value < 0:
-            raise ReorganizationValidationError("Cash component cannot be negative")
-        return value
-
-    @validates('announcement_date', 'effective_date')
-    def validate_dates(self, key, date_value):
-        if date_value is None:
-            raise ReorganizationValidationError(f"{key} cannot be None")
-        return date_value
+    # @validates('exchange_ratio')
+    # def validate_exchange_ratio(self, key, value):
+    #     if value is not None and value <= 0:
+    #         raise ReorganizationValidationError("Exchange ratio must be positive if specified")
+    #     return value
+    #
+    # @validates('cash_component')
+    # def validate_cash_component(self, key, value):
+    #     if value is not None and value < 0:
+    #         raise ReorganizationValidationError("Cash component cannot be negative")
+    #     return value
+    #
+    # @validates('announcement_date', 'effective_date')
+    # def validate_dates(self, key, date_value):
+    #     if date_value is None:
+    #         raise ReorganizationValidationError(f"{key} cannot be None")
+    #     return date_value
 
     def calculate_implied_premium(self, market_price, new_entity_price):
         """Calculate implied premium/discount based on exchange terms"""

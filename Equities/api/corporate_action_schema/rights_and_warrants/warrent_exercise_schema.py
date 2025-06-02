@@ -1,5 +1,6 @@
 # Corporate Action Pydantic Request/Response Models
 from datetime import date
+from decimal import Decimal
 from typing import Annotated, Optional
 
 from pydantic import AfterValidator, ConfigDict, Field, model_validator
@@ -14,14 +15,14 @@ class WarrantExerciseRequest(CorporateActionRequest):
                                                  description="Type of corporate action")
 
     # Warrant Details
-    exercise_price: condecimal(max_digits=20, decimal_places=6, gt=0, strict=True) = Field(...,
-                                                                                           description="Price at which each warrant can be exercised into shares")
+    exercise_price: Decimal = Field(..., max_digits=20, decimal_places=6, gt=0,
+                                    description="Price at which each warrant can be exercised into shares")
 
-    warrant_ratio: condecimal(max_digits=10, decimal_places=6, gt=0, strict=True) = Field(...,
-                                                                                          description="Number of warrants issued per share")
+    warrant_ratio: Decimal = Field(..., max_digits=10, decimal_places=6, gt=0,
+                                   description="Number of warrants issued per share")
 
-    exercise_ratio: condecimal(max_digits=10, decimal_places=6, gt=0, strict=True) = Field(...,
-                                                                                           description="Number of shares received per warrant exercised")
+    exercise_ratio: Decimal = Field(..., max_digits=10, decimal_places=6, gt=0,
+                                    description="Number of shares received per warrant exercised")
 
     # Key Dates
     ex_warrant_date: date = Field(..., description="First date when warrants trade separately from shares")

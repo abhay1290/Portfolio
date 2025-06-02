@@ -50,11 +50,10 @@ class EquityRequest(EquityBase):
 
 
 class EquityResponse(EquityBase):
-    class EquityResponse(EquityBase):
-        id: int
-        created_at: Optional[datetime] = None
-        updated_at: Optional[datetime] = None
-        version: Optional[int] = None
-        last_processed_at: Optional[datetime] = None
+    id: int
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    version: Optional[int] = None
+    last_processed_at: Optional[datetime] = None
 
-        model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True)

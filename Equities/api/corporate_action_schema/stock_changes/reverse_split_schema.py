@@ -1,9 +1,10 @@
 # Corporate Action Pydantic Request/Response Models
 from datetime import date
+from decimal import Decimal
 from typing import Annotated, Optional
 
 from pydantic import ConfigDict, Field, model_validator
-from pydantic.types import condecimal, constr
+from pydantic.types import constr
 
 from Equities.api.corporate_action_schema.corporate_action_schema import CorporateActionRequest, CorporateActionResponse
 from Equities.corporate_actions.enums.CorporateActionTypeEnum import CorporateActionTypeEnum
@@ -18,8 +19,8 @@ class ReverseSplitRequest(CorporateActionRequest):
                                              description="Number of shares before reverse split (must be greater than reverse_ratio_to)")]
     reverse_ratio_to: Annotated[int, Field(..., gt=0,
                                            description="Number of shares after reverse split (must be less than reverse_ratio_from)")]
-    reverse_multiplier: Annotated[condecimal(max_digits=10, decimal_places=6, gt=0, lt=1, strict=True), Field(...,
-                                                                                                              description="Ratio of new shares to old shares (must be between 0 and 1)")]
+    reverse_multiplier: Annotated[Decimal, Field(..., max_digits=10, decimal_places=6, gt=0, lt=1,
+                                                 description="Ratio of new shares to old shares (must be between 0 and 1)")]
 
     # Key Dates
     announcement_date: Optional[date] = Field(None, description="Date when reverse split was announced")
@@ -27,10 +28,10 @@ class ReverseSplitRequest(CorporateActionRequest):
     effective_date: Annotated[date, Field(..., description="Date when reverse split becomes effective")]
 
     # Price and Fractional Information
-    price_adjustment_factor: Optional[Annotated[condecimal(max_digits=10, decimal_places=6, gt=1, strict=True), Field(
-        description="Factor by which prices should be adjusted (old_price * factor)")]] = None
-    cash_in_lieu_rate: Optional[Annotated[condecimal(max_digits=20, decimal_places=6, ge=0, strict=True), Field(
-        description="Cash payment for fractional shares")]] = None
+    price_adjustment_factor: Optional[Annotated[Decimal, Field(..., max_digits=10, decimal_places=6, gt=1,
+                                                               description="Factor by which prices should be adjusted (old_price * factor)")]] = None
+    cash_in_lieu_rate: Optional[Annotated[Decimal, Field(..., max_digits=20, decimal_places=6, ge=0,
+                                                         description="Cash payment for fractional shares")]] = None
 
     # Additional Information
     reverse_split_reason: Optional[Annotated[

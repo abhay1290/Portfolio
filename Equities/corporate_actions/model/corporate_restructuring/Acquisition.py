@@ -1,8 +1,6 @@
 from sqlalchemy import Boolean, Column, Date, Float, ForeignKey, Integer, NUMERIC, String, Text
-from sqlalchemy.orm import validates
 
 from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
-from Equities.utils.Exceptions import AcquisitionValidationError
 
 
 class Acquisition(CorporateActionBase):
@@ -39,32 +37,32 @@ class Acquisition(CorporateActionBase):
     implied_equity_value = Column(NUMERIC(precision=20, scale=6), nullable=True)
 
 
-@validates('acquisition_price')
-def validate_acquisition_price(self, key, price):
-    if price is None or price <= 0:
-        raise AcquisitionValidationError("Acquisition price must be positive")
-    return price
-
-
-@validates('acquisition_premium', 'premium_over_market')
-def validate_premiums(self, key, premium):
-    if premium is not None and premium < 0:
-        raise AcquisitionValidationError(f"{key} cannot be negative")
-    return premium
-
-
-@validates('acquisition_method')
-def validate_acquisition_method(self, key, method):
-    if method not in ['CASH', 'STOCK', 'MIXED']:
-        raise AcquisitionValidationError("Invalid acquisition method")
-    return method
-
-
-@validates('expected_completion_date', 'announcement_date')
-def validate_dates(self, key, date_value):
-    if date_value is None:
-        raise AcquisitionValidationError(f"{key} cannot be None")
-    return date_value
+# @validates('acquisition_price')
+# def validate_acquisition_price(self, key, price):
+#     if price is None or price <= 0:
+#         raise AcquisitionValidationError("Acquisition price must be positive")
+#     return price
+#
+#
+# @validates('acquisition_premium', 'premium_over_market')
+# def validate_premiums(self, key, premium):
+#     if premium is not None and premium < 0:
+#         raise AcquisitionValidationError(f"{key} cannot be negative")
+#     return premium
+#
+#
+# @validates('acquisition_method')
+# def validate_acquisition_method(self, key, method):
+#     if method not in ['CASH', 'STOCK', 'MIXED']:
+#         raise AcquisitionValidationError("Invalid acquisition method")
+#     return method
+#
+#
+# @validates('expected_completion_date', 'announcement_date')
+# def validate_dates(self, key, date_value):
+#     if date_value is None:
+#         raise AcquisitionValidationError(f"{key} cannot be None")
+#     return date_value
 
 
 def calculate_total_value(self):

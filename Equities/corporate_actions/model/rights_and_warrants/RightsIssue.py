@@ -1,9 +1,7 @@
 from sqlalchemy import Column, Date, Enum, ForeignKey, Integer, NUMERIC, Text
-from sqlalchemy.orm import validates
 
 from Equities.corporate_actions.enums.RightsStatusEnum import RightsStatusEnum
 from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
-from Equities.utils.Exceptions import RightsIssueValidationError
 
 
 class RightsIssue(CorporateActionBase):
@@ -35,23 +33,23 @@ class RightsIssue(CorporateActionBase):
     rights_purpose = Column(Text, nullable=True)
     rights_notes = Column(Text, nullable=True)
 
-    @validates('subscription_price')
-    def validate_subscription_price(self, value):
-        if value is None or value <= 0:
-            raise RightsIssueValidationError("Subscription price must be positive")
-        return value
-
-    @validates('rights_ratio', 'subscription_ratio')
-    def validate_ratios(self, key, value):
-        if value is None or value <= 0:
-            raise RightsIssueValidationError(f"{key} must be positive")
-        return value
-
-    @validates('ex_rights_date', 'subscription_deadline')
-    def validate_dates(self, key, date_value):
-        if date_value is None:
-            raise RightsIssueValidationError(f"{key} cannot be None")
-        return date_value
+    # @validates('subscription_price')
+    # def validate_subscription_price(self, key, value):
+    #     if value is None or value <= 0:
+    #         raise RightsIssueValidationError("Subscription price must be positive")
+    #     return value
+    #
+    # @validates('rights_ratio', 'subscription_ratio')
+    # def validate_ratios(self, key, value):
+    #     if value is None or value <= 0:
+    #         raise RightsIssueValidationError(f"{key} must be positive")
+    #     return value
+    #
+    # @validates('ex_rights_date', 'subscription_deadline')
+    # def validate_dates(self, key, date_value):
+    #     if date_value is None:
+    #         raise RightsIssueValidationError(f"{key} cannot be None")
+    #     return date_value
 
     def calculate_theoretical_rights_value(self, market_price):
         """Calculate theoretical rights value"""

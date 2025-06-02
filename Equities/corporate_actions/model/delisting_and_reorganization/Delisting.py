@@ -1,8 +1,6 @@
 from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, NUMERIC, String, Text
-from sqlalchemy.orm import validates
 
 from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
-from Equities.utils.Exceptions import DelistingValidationError
 
 
 class Delisting(CorporateActionBase):
@@ -40,13 +38,13 @@ class Delisting(CorporateActionBase):
     last_trading_price = Column(NUMERIC(precision=20, scale=6), nullable=True)
     implied_liquidation_value = Column(NUMERIC(precision=20, scale=6), nullable=True)
 
-    @validates('final_trading_date', 'effective_date')
-    def validate_dates(self, key, date_value):
-        if date_value is None:
-            raise DelistingValidationError(f"{key} cannot be None")
-        return date_value
+    # @validates('final_trading_date', 'effective_date')
+    # def validate_dates(self, key, date_value):
+    #     if date_value is None:
+    #         raise DelistingValidationError(f"{key} cannot be None")
+    #     return date_value
 
-    def record_last_trading_price(self, price):
+    def record_last_trading_price(self, key, price):
         """Record the last trading price before delisting"""
         if price and price > 0:
             self.last_trading_price = price

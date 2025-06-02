@@ -1,5 +1,4 @@
 from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, NUMERIC, String, Text
-from sqlalchemy.orm import validates
 
 from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
 from Equities.utils.Exceptions import SpinOffValidationError
@@ -42,23 +41,23 @@ class SpinOff(CorporateActionBase):
     regulatory_approvals = Column(Text, nullable=True)  # JSON string of required approvals
     spinoff_notes = Column(Text, nullable=True)
 
-    @validates('distribution_ratio')
-    def validate_distribution_ratio(self, value):
-        if value is None or value <= 0:
-            raise SpinOffValidationError("Distribution ratio must be positive")
-        return value
-
-    @validates('parent_cost_basis_allocation', 'spinoff_cost_basis_allocation')
-    def validate_cost_basis_allocation(self, key, value):
-        if value is not None and (value < 0 or value > 1):
-            raise SpinOffValidationError(f"{key} must be between 0 and 1 if specified")
-        return value
-
-    @validates('announcement_date', 'ex_date', 'distribution_date')
-    def validate_dates(self, key, date_value):
-        if date_value is None:
-            raise SpinOffValidationError(f"{key} cannot be None")
-        return date_value
+    # @validates('distribution_ratio')
+    # def validate_distribution_ratio(self, key, value):
+    #     if value is None or value <= 0:
+    #         raise SpinOffValidationError("Distribution ratio must be positive")
+    #     return value
+    #
+    # @validates('parent_cost_basis_allocation', 'spinoff_cost_basis_allocation')
+    # def validate_cost_basis_allocation(self, key, value):
+    #     if value is not None and (value < 0 or value > 1):
+    #         raise SpinOffValidationError(f"{key} must be between 0 and 1 if specified")
+    #     return value
+    #
+    # @validates('announcement_date', 'ex_date', 'distribution_date')
+    # def validate_dates(self, key, date_value):
+    #     if date_value is None:
+    #         raise SpinOffValidationError(f"{key} cannot be None")
+    #     return date_value
 
     def calculate_cost_basis_allocation(self, parent_fv, spinoff_fv):
         """Calculate default cost basis allocation if not provided"""
@@ -69,14 +68,14 @@ class SpinOff(CorporateActionBase):
             if self.spinoff_cost_basis_allocation is None:
                 self.spinoff_cost_basis_allocation = spinoff_fv / total_value
 
-    def calculate_implied_value(self, parent_post_spinoff_price):
+    def calculate_implied_value(self, key, parent_post_spinoff_price):
         """Calculate implied value of spin-off based on parent's post-spinoff price"""
         if (parent_post_spinoff_price and self.parent_price_pre_spinoff and
                 self.distribution_ratio is not None):
             value_transfer = self.parent_price_pre_spinoff - parent_post_spinoff_price
             self.spinoff_fair_value = value_transfer * self.distribution_ratio
 
-    def validate_cost_basis_sum(self):
+    def validate_cost_basis_sum(self, key, value):
         """Validate that cost basis allocations sum to 1 (if both are provided)"""
         if (self.parent_cost_basis_allocation is not None and
                 self.spinoff_cost_basis_allocation is not None):
