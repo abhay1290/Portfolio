@@ -6,9 +6,12 @@ from pydantic import ConfigDict, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from Equities.api.corporate_action_schema.corporate_action_schema import CorporateActionRequest, CorporateActionResponse
+from Equities.corporate_actions.enums.CorporateActionTypeEnum import CorporateActionTypeEnum
 
 
 class LiquidationRequest(CorporateActionRequest):
+    action_type: CorporateActionTypeEnum = Field(default=CorporateActionTypeEnum.LIQUIDATION, frozen=True,
+                                                 description="Type of corporate action")
     # Liquidation details
     liquidation_type: str = Field(..., max_length=100,
                                   description="Type of liquidation (e.g., 'Voluntary', 'Involuntary')")

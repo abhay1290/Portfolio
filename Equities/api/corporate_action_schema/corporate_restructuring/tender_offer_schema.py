@@ -10,7 +10,7 @@ from Equities.corporate_actions.enums.CorporateActionTypeEnum import CorporateAc
 
 
 class TenderOfferRequest(CorporateActionRequest):
-    action_type: CorporateActionTypeEnum = Field(default=CorporateActionTypeEnum.TENDER_OFFER,
+    action_type: CorporateActionTypeEnum = Field(default=CorporateActionTypeEnum.TENDER_OFFER, frozen=True,
                                                  description="Type of corporate action")
 
     # Tender Offer Details

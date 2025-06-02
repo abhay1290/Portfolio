@@ -5,9 +5,12 @@ from pydantic import ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
 
 from Equities.api.corporate_action_schema.corporate_action_schema import CorporateActionRequest, CorporateActionResponse
+from Equities.corporate_actions.enums.CorporateActionTypeEnum import CorporateActionTypeEnum
 
 
 class DelistingRequest(CorporateActionRequest):
+    action_type: CorporateActionTypeEnum = Field(default=CorporateActionTypeEnum.DELISTING, frozen=True,
+                                                 description="Type of corporate action")
     # Delisting details
     delisting_reason: str = Field(..., max_length=255, description="Reason for the delisting")
     is_voluntary: bool = Field(False, description="Whether the delisting was voluntary")

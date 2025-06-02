@@ -8,7 +8,7 @@ from Equities.corporate_actions.enums.CorporateActionTypeEnum import CorporateAc
 
 
 class BankruptcyRequest(CorporateActionRequest):
-    action_type: CorporateActionTypeEnum = Field(default=CorporateActionTypeEnum.BANKRUPTCY,
+    action_type: CorporateActionTypeEnum = Field(default=CorporateActionTypeEnum.BANKRUPTCY, frozen=True,
                                                  description="Type of corporate action")
 
     # Bankruptcy details

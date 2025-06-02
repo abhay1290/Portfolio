@@ -1,20 +1,8 @@
-from enum import Enum as PythonEnum
-
-from sqlalchemy import Boolean, Column, Date, Enum, ForeignKey, Integer, NUMERIC, String, Text
+from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, NUMERIC, String, Text
 from sqlalchemy.orm import validates
 
 from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
 from Equities.utils.Exceptions import SpinOffValidationError
-
-
-# Enum for status tracking
-class SpinOffStatusEnum(PythonEnum):
-    ANNOUNCED = "Announced"
-    PENDING = "Pending"
-    APPROVED = "Approved"
-    EX_DISTRIBUTION = "Ex-Distribution"
-    COMPLETED = "Completed"
-    TERMINATED = "Terminated"
 
 
 class SpinOff(CorporateActionBase):
@@ -48,7 +36,7 @@ class SpinOff(CorporateActionBase):
     fractional_share_rounding = Column(String(20), nullable=True)  # "Round-up", "Round-down", "Cash"
 
     # Status tracking
-    spinoff_status = Column(Enum(SpinOffStatusEnum), nullable=False, default=SpinOffStatusEnum.ANNOUNCED)
+    # spinoff_status = Column(Enum(SpinOffStatusEnum), nullable=False, default=SpinOffStatusEnum.ANNOUNCED)
 
     # Metadata
     spinoff_reason = Column(Text, nullable=True)

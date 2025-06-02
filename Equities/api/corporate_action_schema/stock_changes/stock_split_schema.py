@@ -11,25 +11,31 @@ from Equities.corporate_actions.enums.CorporateActionTypeEnum import CorporateAc
 
 
 class StockSplitRequest(CorporateActionRequest):
-    action_type: CorporateActionTypeEnum = Field(CorporateActionTypeEnum.STOCK_SPLIT)
+    action_type: CorporateActionTypeEnum = Field(CorporateActionTypeEnum.STOCK_SPLIT, frozen=True,
+                                                 description="Type of corporate action")
 
     # Split Ratio Information
-    split_ratio_from: int = Field(..., gt=0, description="Old shares (denominator)")
-    split_ratio_to: int = Field(..., gt=0, description="New shares (numerator)")
-    split_multiplier: condecimal(max_digits=10, decimal_places=6) = Field(..., gt=0)
+    split_ratio_from: int = Field(..., gt=0, description="Number of shares before the split (must be positive)")
+    split_ratio_to: int = Field(..., gt=0, description="Number of shares after the split (must be positive)")
+    split_multiplier: condecimal(max_digits=10, decimal_places=6) = Field(..., gt=1,
+                                                                          description="Multiplier representing the split ratio (must be greater than 1)")
 
     # Key Dates
-    announcement_date: Optional[date] = Field(None, description="Announcement date")
-    ex_split_date: date = Field(..., description="Ex-split date")
-    effective_date: date = Field(..., description="Effective date")
+    announcement_date: Optional[date] = Field(None, description="Date when the stock split was announced (optional)")
+    ex_split_date: date = Field(..., description="First date when shares trade post-split")
+    effective_date: date = Field(..., description="Date when the split becomes effective")
 
     # Price and Fractional Share Information
-    price_adjustment_factor: Optional[condecimal(max_digits=10, decimal_places=6)] = Field(None, gt=0)
-    cash_in_lieu_rate: Optional[condecimal(max_digits=20, decimal_places=6)] = Field(None, ge=0)
-    fractional_share_treatment: Optional[constr(max_length=100)] = Field(None)
+    price_adjustment_factor: Optional[condecimal(max_digits=10, decimal_places=6)] = Field(None, gt=0,
+                                                                                           description="Factor to adjust historical prices (optional, must be positive)")
+    cash_in_lieu_rate: Optional[condecimal(max_digits=20, decimal_places=6)] = Field(None, ge=0,
+                                                                                     description="Cash payment rate for fractional shares (optional, must be non-negative)")
+    fractional_share_treatment: Optional[constr(max_length=100)] = Field(None,
+                                                                         description="Method for handling fractional shares (optional, max 100 chars)")
 
     # Additional Information
-    split_notes: Optional[constr(max_length=2000)] = Field(None)
+    split_notes: Optional[constr(max_length=2000)] = Field(None,
+                                                           description="Additional notes about the stock split (optional, max 2000 chars)")
 
     @classmethod
     @field_validator('split_multiplier')
@@ -40,6 +46,8 @@ class StockSplitRequest(CorporateActionRequest):
             expected_multiplier = Decimal(str(split_to)) / Decimal(str(split_from))
             if abs(v - expected_multiplier) > Decimal('0.000001'):
                 raise ValueError("split_multiplier must equal split_ratio_to / split_ratio_from")
+        if v <= 1:
+            raise ValueError("split_multiplier must be greater than 1")
         return v
 
     model_config = ConfigDict(extra="forbid")

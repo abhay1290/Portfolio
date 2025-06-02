@@ -12,7 +12,7 @@ from Equities.corporate_actions.enums.MergerTypeEnum import MergerTypeEnum
 
 
 class MergerRequest(CorporateActionRequest):
-    action_type: CorporateActionTypeEnum = Field(default=CorporateActionTypeEnum.MERGER,
+    action_type: CorporateActionTypeEnum = Field(default=CorporateActionTypeEnum.MERGER, frozen=True,
                                                  description="Type of corporate action")
 
     # Merger Information

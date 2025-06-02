@@ -11,49 +11,27 @@ from Equities.corporate_actions.enums.CorporateActionTypeEnum import CorporateAc
 
 
 class SpecialDividendRequest(CorporateActionRequest):
-    action_type: CorporateActionTypeEnum = Field(
-        default=CorporateActionTypeEnum.SPECIAL_DIVIDEND,
-        description="Type of corporate action"
-    )
+    action_type: CorporateActionTypeEnum = Field(default=CorporateActionTypeEnum.SPECIAL_DIVIDEND, frozen=True,
+                                                 description="Type of corporate action")
 
     # Financial Information
-    is_gross_dividend_amount: bool = Field(
-        default=True,
-        description="True if amount is gross (pre-tax), False if net amount"
-    )
-    special_dividend_amount: condecimal(max_digits=20, decimal_places=6) = Field(
-        ...,
-        gt=0,
-        description="Per-share special dividend amount"
-    )
-    eligible_outstanding_shares: float = Field(
-        ...,
-        gt=0,
-        description="Number of shares eligible for special dividend"
-    )
+    is_gross_dividend_amount: bool = Field(default=True,
+                                           description="True if amount is gross (pre-tax), False if net amount")
+    special_dividend_amount: condecimal(max_digits=20, decimal_places=6) = Field(..., gt=0,
+                                                                                 description="Per-share special dividend amount")
+    eligible_outstanding_shares: float = Field(..., gt=0, description="Number of shares eligible for special dividend")
 
     # Key Dates
     declaration_date: date = Field(..., description="Declaration date")
-    ex_dividend_date: Optional[date] = Field(
-        None,
-        description="Ex-dividend date (first trading day without entitlement)"
-    )
+    ex_dividend_date: Optional[date] = Field(None,
+                                             description="Ex-dividend date (first trading day without entitlement)")
     payment_date: date = Field(..., description="Payment date")
 
     # Tax Information
-    dividend_tax_rate: Optional[float] = Field(
-        None,
-        ge=0.0,
-        le=1.0,
-        description="Applicable tax rate (0.0 to 1.0)"
-    )
+    dividend_tax_rate: Optional[float] = Field(None, ge=0.0, le=1.0, description="Applicable tax rate (0.0 to 1.0)")
 
     # Additional Information
-    special_dividend_notes: Optional[str] = Field(
-        None,
-        max_length=2000,
-        description="Notes about the special dividend"
-    )
+    special_dividend_notes: Optional[str] = Field(None, max_length=2000, description="Notes about the special dividend")
 
     @classmethod
     @field_validator('payment_date')

@@ -6,9 +6,12 @@ from pydantic import ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
 
 from Equities.api.corporate_action_schema.corporate_action_schema import CorporateActionRequest, CorporateActionResponse
+from Equities.corporate_actions.enums.CorporateActionTypeEnum import CorporateActionTypeEnum
 
 
 class ReorganizationRequest(CorporateActionRequest):
+    action_type: CorporateActionTypeEnum = Field(default=CorporateActionTypeEnum.REORGANIZATION, frozen=True,
+                                                 description="Type of corporate action")
     # Reorganization details
     reorganization_type: str = Field(..., max_length=100,
                                      description="Type of reorganization (e.g., 'Merger', 'Spin-off', 'Split-off')")

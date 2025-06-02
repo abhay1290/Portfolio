@@ -10,7 +10,7 @@ from Equities.corporate_actions.enums.CorporateActionTypeEnum import CorporateAc
 
 
 class ExchangeOfferRequest(CorporateActionRequest):
-    action_type: CorporateActionTypeEnum = Field(default=CorporateActionTypeEnum.EXCHANGE_OFFER,
+    action_type: CorporateActionTypeEnum = Field(default=CorporateActionTypeEnum.EXCHANGE_OFFER, frozen=True,
                                                  description="Type of corporate action")
 
     # Exchange Details

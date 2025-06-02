@@ -11,27 +11,16 @@ from Equities.corporate_actions.enums.CorporateActionTypeEnum import CorporateAc
 
 
 class ReturnOfCapitalRequest(CorporateActionRequest):
-    action_type: CorporateActionTypeEnum = Field(
-        default=CorporateActionTypeEnum.RETURN_OF_CAPITAL,
-        description="Type of corporate action"
-    )
+    action_type: CorporateActionTypeEnum = Field(default=CorporateActionTypeEnum.RETURN_OF_CAPITAL, frozen=True,
+                                                 description="Type of corporate action")
 
     # Financial Information
-    return_amount: condecimal(max_digits=20, decimal_places=6) = Field(
-        ...,
-        gt=0,
-        description="Per-share return of capital amount"
-    )
-    eligible_outstanding_shares: condecimal(max_digits=20, decimal_places=6) = Field(
-        ...,
-        gt=0,
-        description="Number of shares eligible for return of capital"
-    )
-    cost_basis_reduction: Optional[condecimal(max_digits=20, decimal_places=6)] = Field(
-        None,
-        ge=0,
-        description="Per-share cost basis reduction amount"
-    )
+    return_amount: condecimal(max_digits=20, decimal_places=6) = Field(..., gt=0,
+                                                                       description="Per-share return of capital amount")
+    eligible_outstanding_shares: condecimal(max_digits=20, decimal_places=6) = Field(..., gt=0,
+                                                                                     description="Number of shares eligible for return of capital")
+    cost_basis_reduction: Optional[condecimal(max_digits=20, decimal_places=6)] = Field(None, ge=0,
+                                                                                        description="Per-share cost basis reduction amount")
 
     # Key Dates
     declaration_date: date = Field(..., description="Declaration date")
@@ -39,23 +28,13 @@ class ReturnOfCapitalRequest(CorporateActionRequest):
     payment_date: date = Field(..., description="Payment date")
 
     # Impact Information
-    affects_cost_basis: bool = Field(
-        default=True,
-        description="Whether this return of capital affects cost basis"
-    )
-    tax_rate: Optional[condecimal(max_digits=6, decimal_places=4)] = Field(
-        None,
-        ge=0,
-        le=1,
-        description="Applicable tax rate (0 to 1)"
-    )
+    affects_cost_basis: bool = Field(default=True, description="Whether this return of capital affects cost basis")
+    tax_rate: Optional[condecimal(max_digits=6, decimal_places=4)] = Field(None, ge=0, le=1,
+                                                                           description="Applicable tax rate (0 to 1)")
 
     # Additional Information
-    return_notes: Optional[str] = Field(
-        None,
-        max_length=2000,
-        description="Additional notes about the return of capital"
-    )
+    return_notes: Optional[str] = Field(None, max_length=2000,
+                                        description="Additional notes about the return of capital")
 
     @model_validator(mode='after')
     def validate_cost_basis_fields(self) -> 'ReturnOfCapitalRequest':

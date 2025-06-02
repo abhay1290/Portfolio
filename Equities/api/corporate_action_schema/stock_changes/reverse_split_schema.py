@@ -1,8 +1,8 @@
 # Corporate Action Pydantic Request/Response Models
 from datetime import date
-from typing import Optional
+from typing import Annotated, Optional
 
-from pydantic import ConfigDict, Field, field_validator
+from pydantic import ConfigDict, Field, model_validator
 from pydantic.types import condecimal, constr
 
 from Equities.api.corporate_action_schema.corporate_action_schema import CorporateActionRequest, CorporateActionResponse
@@ -10,33 +10,45 @@ from Equities.corporate_actions.enums.CorporateActionTypeEnum import CorporateAc
 
 
 class ReverseSplitRequest(CorporateActionRequest):
-    action_type: CorporateActionTypeEnum = Field(CorporateActionTypeEnum.REVERSE_SPLIT)
+    action_type: CorporateActionTypeEnum = Field(default=CorporateActionTypeEnum.REVERSE_SPLIT, frozen=True,
+                                                 description="Type of corporate action")
 
     # Reverse Split Ratio Information
-    reverse_ratio_from: int = Field(..., gt=0, description="Old shares (higher number)")
-    reverse_ratio_to: int = Field(..., gt=0, description="New shares (lower number)")
-    reverse_multiplier: condecimal(max_digits=10, decimal_places=6) = Field(..., gt=0, lt=1)
+    reverse_ratio_from: Annotated[int, Field(..., gt=0,
+                                             description="Number of shares before reverse split (must be greater than reverse_ratio_to)")]
+    reverse_ratio_to: Annotated[int, Field(..., gt=0,
+                                           description="Number of shares after reverse split (must be less than reverse_ratio_from)")]
+    reverse_multiplier: Annotated[condecimal(max_digits=10, decimal_places=6, gt=0, lt=1, strict=True), Field(...,
+                                                                                                              description="Ratio of new shares to old shares (must be between 0 and 1)")]
 
     # Key Dates
-    announcement_date: Optional[date] = Field(None)
-    ex_split_date: date = Field(..., description="Ex-split date")
-    effective_date: date = Field(..., description="Effective date")
+    announcement_date: Optional[date] = Field(None, description="Date when reverse split was announced")
+    ex_split_date: Annotated[date, Field(..., description="First trading date where shares trade post-reverse split")]
+    effective_date: Annotated[date, Field(..., description="Date when reverse split becomes effective")]
 
     # Price and Fractional Information
-    price_adjustment_factor: Optional[condecimal(max_digits=10, decimal_places=6)] = Field(None, gt=1)
-    cash_in_lieu_rate: Optional[condecimal(max_digits=20, decimal_places=6)] = Field(None, ge=0)
+    price_adjustment_factor: Optional[Annotated[condecimal(max_digits=10, decimal_places=6, gt=1, strict=True), Field(
+        description="Factor by which prices should be adjusted (old_price * factor)")]] = None
+    cash_in_lieu_rate: Optional[Annotated[condecimal(max_digits=20, decimal_places=6, ge=0, strict=True), Field(
+        description="Cash payment for fractional shares")]] = None
 
     # Additional Information
-    reverse_split_reason: Optional[constr(max_length=1000)] = Field(None)
-    reverse_split_notes: Optional[constr(max_length=2000)] = Field(None)
+    reverse_split_reason: Optional[Annotated[
+        constr(max_length=1000, strip_whitespace=True), Field(description="Reason for the reverse split")]] = None
+    reverse_split_notes: Optional[Annotated[constr(max_length=2000, strip_whitespace=True), Field(
+        description="Additional notes about the reverse split")]] = None
 
-    @classmethod
-    @field_validator('reverse_ratio_from')
-    def validate_reverse_ratio(cls, v, info):
-        reverse_to = info.data.get('reverse_ratio_to')
-        if reverse_to and v <= reverse_to:
+    @model_validator(mode='after')
+    def validate_ratios(self):
+        if self.reverse_ratio_from <= self.reverse_ratio_to:
             raise ValueError("reverse_ratio_from must be greater than reverse_ratio_to")
-        return v
+        if not (0 < self.reverse_multiplier < 1):
+            raise ValueError("reverse_multiplier must be between 0 and 1")
+
+    @model_validator(mode='after')
+    def validate_dates(self):
+        if self.ex_split_date > self.effective_date:
+            raise ValueError("ex_split_date must be before effective_date")
 
     model_config = ConfigDict(extra="forbid")
 

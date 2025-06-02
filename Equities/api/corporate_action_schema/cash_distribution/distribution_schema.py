@@ -9,7 +9,8 @@ from Equities.corporate_actions.enums.CorporateActionTypeEnum import CorporateAc
 
 
 class DistributionRequest(CorporateActionRequest):
-    action_type: CorporateActionTypeEnum = Field(default=CorporateActionTypeEnum.DISTRIBUTION)
+    action_type: CorporateActionTypeEnum = Field(default=CorporateActionTypeEnum.DISTRIBUTION, frozen=True,
+                                                 description="Type of corporate action")
 
     # Financial Information
     is_gross_distribution_amount: bool = Field(default=True, description="Whether amount is gross (pre-tax)")

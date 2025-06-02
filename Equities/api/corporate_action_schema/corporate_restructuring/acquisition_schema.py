@@ -13,73 +13,31 @@ AcquisitionMethod = Literal['CASH', 'STOCK', 'MIXED']
 
 
 class AcquisitionRequest(CorporateActionRequest):
-    action_type: CorporateActionTypeEnum = Field(
-        default=CorporateActionTypeEnum.ACQUISITION,
-        description="Type of corporate action"
-    )
+    action_type: CorporateActionTypeEnum = Field(default=CorporateActionTypeEnum.ACQUISITION, frozen=True,
+                                                 description="Type of corporate action")
 
     # Acquisition Information
-    acquiring_company_id: Optional[int] = Field(
-        None,
-        gt=0,
-        description="ID of the acquiring company"
-    )
-    acquisition_price: condecimal(max_digits=20, decimal_places=6) = Field(
-        ...,
-        gt=0,
-        description="Per-share acquisition price"
-    )
-    acquisition_premium: Optional[float] = Field(
-        None,
-        ge=0.0,
-        description="Premium percentage offered"
-    )
-    shares_exchanged: Optional[condecimal(max_digits=20, decimal_places=6)] = Field(
-        None,
-        gt=0,
-        description="Number of shares exchanged (for stock acquisitions)"
-    )
-    exchange_ratio: Optional[float] = Field(
-        None,
-        gt=0,
-        description="Exchange ratio (for stock acquisitions)"
-    )
+    acquiring_company_id: Optional[int] = Field(None, gt=0, description="ID of the acquiring company")
+    acquisition_price: condecimal(max_digits=20, decimal_places=6) = Field(..., gt=0,
+                                                                           description="Per-share acquisition price")
+    acquisition_premium: Optional[float] = Field(None, ge=0.0, description="Premium percentage offered")
+    shares_exchanged: Optional[condecimal(max_digits=20, decimal_places=6)] = Field(None, gt=0,
+                                                                                    description="Number of shares exchanged (for stock acquisitions)")
+    exchange_ratio: Optional[float] = Field(None, gt=0, description="Exchange ratio (for stock acquisitions)")
 
     # Key Dates
-    announcement_date: date = Field(
-        ...,
-        description="Date when acquisition was announced"
-    )
-    expected_completion_date: date = Field(
-        ...,
-        description="Expected completion date"
-    )
-    completion_date: Optional[date] = Field(
-        None,
-        description="Actual completion date (populated when completed)"
-    )
+    announcement_date: date = Field(..., description="Date when acquisition was announced")
+    expected_completion_date: date = Field(..., description="Expected completion date")
+    completion_date: Optional[date] = Field(None, description="Actual completion date (populated when completed)")
 
     # Transaction Details
-    acquisition_method: AcquisitionMethod = Field(
-        ...,
-        description="Acquisition method (CASH, STOCK, or MIXED)"
-    )
-    is_friendly: bool = Field(
-        default=True,
-        description="Whether the acquisition is friendly"
-    )
-    premium_over_market: Optional[float] = Field(
-        None,
-        ge=0.0,
-        description="Premium over market price"
-    )
+    acquisition_method: AcquisitionMethod = Field(..., description="Acquisition method (CASH, STOCK, or MIXED)")
+    is_friendly: bool = Field(default=True, description="Whether the acquisition is friendly")
+    premium_over_market: Optional[float] = Field(None, ge=0.0, description="Premium over market price")
 
     # Additional Information
-    acquisition_notes: Optional[str] = Field(
-        None,
-        max_length=2000,
-        description="Additional notes about the acquisition"
-    )
+    acquisition_notes: Optional[str] = Field(None, max_length=2000,
+                                             description="Additional notes about the acquisition")
 
     @model_validator(mode='after')
     def validate_stock_acquisition_fields(self) -> 'AcquisitionRequest':
