@@ -19,7 +19,6 @@ class SpinOff(CorporateActionBase):
 
     # Dates
     announcement_date = Column(Date, nullable=False)
-    record_date = Column(Date, nullable=True)
     ex_date = Column(Date, nullable=False)
     distribution_date = Column(Date, nullable=False)
     trading_start_date = Column(Date, nullable=True)  # When spun-off shares start trading

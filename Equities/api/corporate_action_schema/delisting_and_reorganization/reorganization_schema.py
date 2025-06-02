@@ -27,7 +27,6 @@ class ReorganizationRequest(CorporateActionRequest):
 
     # Dates
     announcement_date: Optional[date] = Field(None, description="Date reorganization was announced")
-    record_date: Optional[date] = Field(None, description="Date for determining shareholder eligibility")
     shareholder_meeting_date: Optional[date] = Field(None,
                                                      description="Date of shareholder meeting to approve the reorganization")
     shareholder_approval_date: Optional[date] = Field(None, description="Date shareholders approved the reorganization")

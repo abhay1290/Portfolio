@@ -22,7 +22,6 @@ class Reorganization(CorporateActionBase):
 
     # Dates
     announcement_date = Column(Date, nullable=False)
-    record_date = Column(Date, nullable=True)
     shareholder_meeting_date = Column(Date, nullable=True)
     shareholder_approval_date = Column(Date, nullable=True)
     effective_date = Column(Date, nullable=False)
