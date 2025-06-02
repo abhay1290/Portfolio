@@ -53,6 +53,61 @@ class TenderOfferValidationError(CorporateActionValidationError):
     pass
 
 
+class BankruptcyValidationError(CorporateActionValidationError):
+    """Exception raised for a Bankruptcy validation errors"""
+    pass
+
+
+class DelistingValidationError(CorporateActionValidationError):
+    """Exception raised for a Delisting validation errors"""
+    pass
+
+
+class LiquidationValidationError(CorporateActionValidationError):
+    """Exception raised for a Liquidation validation errors"""
+    pass
+
+
+class ReorganizationValidationError(CorporateActionValidationError):
+    """Exception raised for a Reorganization validation errors"""
+    pass
+
+
+class ReverseSplitValidationError(CorporateActionValidationError):
+    """Exception raised for a ReverseSplit validation errors"""
+    pass
+
+
+class SpinOffValidationError(CorporateActionValidationError):
+    """Exception raised for a SpinOff validation errors"""
+    pass
+
+
+class StockDividendValidationError(CorporateActionValidationError):
+    """Exception raised for a StockDividend validation errors"""
+    pass
+
+
+class StockSplitValidationError(CorporateActionValidationError):
+    """Exception raised for a StockSplit validation errors"""
+    pass
+
+
+class RightsIssueValidationError(CorporateActionValidationError):
+    """Exception raised for a RightsIssue validation errors"""
+    pass
+
+
+class SubscriptionValidationError(CorporateActionValidationError):
+    """Exception raised for a Subscription validation errors"""
+    pass
+
+
+class WarrantValidationError(CorporateActionValidationError):
+    """Exception raised for a WarrantExercise validation errors"""
+    pass
+
+
 class ProcessingLockError(CorporateActionError):
     """Exception raised when equity is locked for processing"""
     pass
