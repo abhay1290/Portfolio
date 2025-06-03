@@ -26,7 +26,7 @@ from equity.src.api.routers.equity_routers_setup import (
     tender_offer_router,
     warrant_exercise_router
 )
-from equity.src.config import SERVICE_NAME, VERSION
+from equity.src.config import settings
 
 # Configure logging
 logging.basicConfig(
@@ -56,6 +56,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/health", tags=["monitoring"])
+async def health_check():
+    """Endpoint for service health monitoring"""
+    return {
+        "status": "healthy",
+        "version": settings.VERSION,
+        "service": settings.SERVICE_NAME,
+        # Additional health indicators:
+        "database_status": "connected",  # You would check DB connection
+        "redis_status": "connected"  # And other dependencies
+    }
+
 
 # Organize routers by category
 EQUITY_ROUTERS = [
@@ -130,19 +144,6 @@ for router, tag in TERMINATION_ROUTERS:
         prefix=f"/api/v1/corporate-actions",
         tags=["Termination", tag]  # Group tag
     )
-
-
-@app.get("/health", tags=["monitoring"])
-async def health_check():
-    """Endpoint for service health monitoring"""
-    return {
-        "status": "healthy",
-        "version": VERSION,
-        "service": SERVICE_NAME,
-        # Additional health indicators:
-        "database_status": "connected",  # You would check DB connection
-        "redis_status": "connected"  # And other dependencies
-    }
 
 # @app.on_event("startup")
 # async def startup_event():

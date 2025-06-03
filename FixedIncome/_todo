@@ -1,5 +1,0 @@
-- caching to remove redunant calls
-- only fixed rate being used (make it more flexible to accept complex rate structures)
-- more common methods to utils
-
-- Appropriate indexes on symbol and maturity date fields for better query performance.
