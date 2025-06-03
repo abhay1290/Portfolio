@@ -1,9 +1,9 @@
 from sqlalchemy import Column, Date, DateTime, Enum, Float, Integer, String, func
 
-from Currency.CurrencyEnum import CurrencyEnum
 from fixed_income.src.database import Base
 from fixed_income.src.model.enums import BondTypeEnum, BusinessDayConventionEnum, CalendarEnum, CompoundingEnum, \
     DayCountConventionEnum, FrequencyEnum
+from fixed_income.src.model.enums.CurrencyEnum import CurrencyEnum
 
 
 class BondBase(Base):

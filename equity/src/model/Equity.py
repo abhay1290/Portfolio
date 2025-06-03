@@ -8,13 +8,13 @@ from sqlalchemy import Boolean, Column, DateTime, Enum, Index, Integer, NUMERIC,
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Session, relationship, validates
 
-from Currency.CurrencyEnum import CurrencyEnum
 from equity.src.database import Base
 from equity.src.model.CorporateActionHistoryLog import CorporateActionHistoryLog
 from equity.src.model.corporate_actions.enums.CorporateActionTypeEnum import CorporateActionTypeEnum
 from equity.src.model.corporate_actions.model.CorporateActionBase import CorporateActionBase
 from equity.src.model.enums.BusinessDayConventionEnum import BusinessDayConventionEnum
 from equity.src.model.enums.CalenderEnum import CalendarEnum
+from equity.src.model.enums.CurrencyEnum import CurrencyEnum
 from equity.src.utils.Decorators import audit_trail, transaction_rollback, validation_required
 from equity.src.utils.Exceptions import CorporateActionError, EquityValidationError
 

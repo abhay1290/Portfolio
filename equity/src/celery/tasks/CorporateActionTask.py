@@ -8,8 +8,8 @@ from celery import Task, group
 from sqlalchemy import and_
 from sqlalchemy.orm import Session, with_polymorphic
 
-from celery_app import celery_app
-from equity.src.database.database import SessionLocal
+from equity.src.celery.app import celery_app
+from equity.src.database import SessionLocal
 from equity.src.model import CorporateActionHistoryLog
 from equity.src.model import Equity
 from equity.src.model.corporate_actions.analytics.CorporateActionExecutionEngine import ca_execution_engine

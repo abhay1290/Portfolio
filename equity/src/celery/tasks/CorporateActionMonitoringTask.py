@@ -6,9 +6,9 @@ from celery import Task
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from celery_app import celery_app
+from equity.src.celery.app import celery_app
 from equity.src.celery.tasks.CorporateActionTask import batch_process_eod_actions
-from equity.src.database.database import SessionLocal
+from equity.src.database import SessionLocal
 from equity.src.model.corporate_actions.enums.StatusEnum import StatusEnum
 from equity.src.model.corporate_actions.model.CorporateActionBase import CorporateActionBase
 

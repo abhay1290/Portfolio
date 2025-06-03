@@ -3,9 +3,9 @@ from typing import Annotated, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, confloat, conint, field_validator
 
-from Currency.CurrencyEnum import CurrencyEnum
 from equity.src.model.enums import BusinessDayConventionEnum
 from equity.src.model.enums import CalendarEnum
+from equity.src.model.enums.CurrencyEnum import CurrencyEnum
 
 
 class EquityBase(BaseModel):

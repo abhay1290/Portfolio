@@ -1,6 +1,6 @@
 from fixed_income.src.model.analytics.formulation import BondAnalyticsBase, CallableBondAnalytics, \
-    FixedRateBondAnalytics, \
-    FloatingRateBondAnalytics, PutableBondAnalytics, SinkingFundBondAnalytics, ZeroCouponBondAnalytics
+    FixedRateBondAnalytics, FloatingRateBondAnalytics, PutableBondAnalytics, SinkingFundBondAnalytics, \
+    ZeroCouponBondAnalytics
 from fixed_income.src.model.bonds import BondBase
 from fixed_income.src.model.enums import BondTypeEnum
 

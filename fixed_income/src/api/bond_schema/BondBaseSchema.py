@@ -3,9 +3,9 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from Currency.CurrencyEnum import CurrencyEnum
 from fixed_income.src.model.enums import BondTypeEnum, BusinessDayConventionEnum, CalendarEnum, CompoundingEnum, \
     DayCountConventionEnum, FrequencyEnum
+from fixed_income.src.model.enums.CurrencyEnum import CurrencyEnum
 
 
 class BondBaseRequest(BaseModel):

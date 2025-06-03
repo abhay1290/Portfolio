@@ -4,12 +4,12 @@ import unittest
 from datetime import date
 from unittest.mock import Mock, patch
 
-from Currency.CurrencyEnum import CurrencyEnum
 from fixed_income.src.model.analytics.BondAnalyticsFactory import bond_analytics_factory
 from fixed_income.src.model.analytics.formulation import CallableBondAnalytics
 from fixed_income.src.model.bonds import BondBase, CallableBondModel
 from fixed_income.src.model.enums import BondTypeEnum, BusinessDayConventionEnum, CalendarEnum, CompoundingEnum, \
     DayCountConventionEnum, FrequencyEnum
+from fixed_income.src.model.enums.CurrencyEnum import CurrencyEnum
 
 
 class CallableBondAnalyticsTest(unittest.TestCase):

@@ -1,17 +1,13 @@
-from FixedIncome.src.api.bond_schema.CallableBondSchema import CallableBondRequest, CallableBondResponse
-from FixedIncome.src.api.bond_schema.FixedRateBondSchema import FixedRateBondRequest, FixedRateBondResponse
-from FixedIncome.src.api.bond_schema.FloatingRateBondSchema import FloatingRateBondRequest, FloatingRateBondResponse
-from FixedIncome.src.api.bond_schema.PutableBondSchema import PutableBondRequest, PutableBondResponse
-from FixedIncome.src.api.bond_schema.SinkingFundBondSchema import SinkingFundBondRequest, SinkingFundBondResponse
-from FixedIncome.src.api.bond_schema.ZeroCouponBondSchema import ZeroCouponBondRequest, ZeroCouponBondResponse
-from FixedIncome.src.api.routers.bond_crud_router import BondGenericRouter
-from FixedIncome.src.model.bonds.BondBase import BondBase
-from FixedIncome.src.model.bonds.CallableBondModel import CallableBondModel
-from FixedIncome.src.model.bonds.FixedRateBondModel import FixedRateBondModel
-from FixedIncome.src.model.bonds.FloatingRateBondModel import FloatingRateBondModel
-from FixedIncome.src.model.bonds.PutableBondModel import PutableBondModel
-from FixedIncome.src.model.bonds.SinkingFundBondModel import SinkingFundBondModel
-from FixedIncome.src.model.bonds.ZeroCouponBondModel import ZeroCouponBondModel
+from fixed_income.src.api.bond_schema.CallableBondSchema import CallableBondRequest, CallableBondResponse
+from fixed_income.src.api.bond_schema.FixedRateBondSchema import FixedRateBondRequest, FixedRateBondResponse
+from fixed_income.src.api.bond_schema.FloatingRateBondSchema import FloatingRateBondRequest, FloatingRateBondResponse
+from fixed_income.src.api.bond_schema.PutableBondSchema import PutableBondRequest, PutableBondResponse
+from fixed_income.src.api.bond_schema.SinkingFundBondSchema import SinkingFundBondRequest, SinkingFundBondResponse
+from fixed_income.src.api.bond_schema.ZeroCouponBondSchema import ZeroCouponBondRequest, ZeroCouponBondResponse
+from fixed_income.src.api.routers.bond_crud_router import BondGenericRouter
+from fixed_income.src.model.bonds import BondBase, CallableBondModel, FixedRateBondModel, FloatingRateBondModel, \
+    PutableBondModel, \
+    SinkingFundBondModel, ZeroCouponBondModel
 
 zero_bond_router = BondGenericRouter(
     bond_base_model=BondBase,

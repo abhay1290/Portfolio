@@ -1,8 +1,7 @@
 from sqlalchemy import Column, Date, Enum, Float, ForeignKey, Integer, JSON
 
-from FixedIncome.src.model.bonds.BondBase import BondBase
-from FixedIncome.src.model.enums.FrequencyEnum import FrequencyEnum
-from FixedIncome.src.model.enums.SinkingFundTypeEnum import SinkingFundTypeEnum
+from fixed_income.src.model.bonds import BondBase
+from fixed_income.src.model.enums import FrequencyEnum, SinkingFundTypeEnum
 
 
 class SinkingFundBondModel(BondBase):

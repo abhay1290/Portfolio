@@ -3,12 +3,12 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, validates
 
-from Currency.CurrencyEnum import CurrencyEnum
 from equity.src.database import Base
 from equity.src.model.corporate_actions.enums.CorporateActionTypeEnum import CorporateActionTypeEnum
 from equity.src.model.corporate_actions.enums.PriorityEnum import PriorityEnum
 from equity.src.model.corporate_actions.enums.ProcessingModeEnum import ProcessingModeEnum
 from equity.src.model.corporate_actions.enums.StatusEnum import StatusEnum
+from equity.src.model.enums.CurrencyEnum import CurrencyEnum
 from equity.src.utils.Exceptions import CorporateActionValidationError
 
 

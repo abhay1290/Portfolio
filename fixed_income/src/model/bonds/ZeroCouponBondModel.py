@@ -1,6 +1,6 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer
 
-from FixedIncome.src.model.bonds.BondBase import BondBase
+from fixed_income.src.model.bonds import BondBase
 
 
 class ZeroCouponBondModel(BondBase):

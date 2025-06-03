@@ -2,11 +2,11 @@ import math
 import unittest
 from datetime import date
 
-from Currency.CurrencyEnum import CurrencyEnum
 from fixed_income.src.model.analytics.BondAnalyticsFactory import bond_analytics_factory
 from fixed_income.src.model.bonds import BondBase, ZeroCouponBondModel
 from fixed_income.src.model.enums import BondTypeEnum, BusinessDayConventionEnum, CalendarEnum, CompoundingEnum, \
     DayCountConventionEnum, FrequencyEnum
+from fixed_income.src.model.enums.CurrencyEnum import CurrencyEnum
 
 
 class ZeroCouponBondTest(unittest.TestCase):

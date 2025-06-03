@@ -3,11 +3,11 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from Currency.CurrencyEnum import CurrencyEnum
 from equity.src.model.corporate_actions.enums.CorporateActionTypeEnum import CorporateActionTypeEnum
 from equity.src.model.corporate_actions.enums.PriorityEnum import PriorityEnum
 from equity.src.model.corporate_actions.enums.ProcessingModeEnum import ProcessingModeEnum
 from equity.src.model.corporate_actions.enums.StatusEnum import StatusEnum
+from equity.src.model.enums.CurrencyEnum import CurrencyEnum
 
 
 class CorporateActionRequest(BaseModel):
