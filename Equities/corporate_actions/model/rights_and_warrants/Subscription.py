@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Date, ForeignKey, Integer, NUMERIC, Text
+from datetime import date
+
+from sqlalchemy import Column, Date, ForeignKey, Integer, Numeric, Text
 
 from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
 
@@ -9,31 +11,28 @@ class Subscription(CorporateActionBase):
 
     corporate_action_id = Column(Integer, ForeignKey('corporate_action.id', ondelete='CASCADE'), primary_key=True)
 
-    # Subscription details
-    subscription_price = Column(NUMERIC(precision=20, scale=6), nullable=False)
-    subscription_ratio = Column(NUMERIC(precision=10, scale=6), nullable=False)
-    minimum_subscription = Column(Integer, nullable=True)
-    maximum_subscription = Column(Integer, nullable=True)
-
-    # Dates
-    announcement_date = Column(Date, nullable=True)
+    # Required fields
+    subscription_price = Column(Numeric(precision=20, scale=6), nullable=False)
+    subscription_ratio = Column(Numeric(precision=10, scale=6), nullable=False)
     offer_date = Column(Date, nullable=False)
     subscription_deadline = Column(Date, nullable=False)
     payment_deadline = Column(Date, nullable=False)
-    allotment_date = Column(Date, nullable=True)
 
-    # Subscription results
-    shares_applied = Column(Integer, nullable=True)
-    shares_allotted = Column(Integer, nullable=True)
-    allotment_ratio = Column(NUMERIC(precision=10, scale=6), nullable=True)
-    subscription_premium = Column(NUMERIC(precision=20, scale=6), nullable=True)
+    # Fields with defaults
+    minimum_subscription = Column(Integer, nullable=False, default=1)
+    maximum_subscription = Column(Integer, nullable=False, default=1000000)
+    announcement_date = Column(Date, nullable=False, default=date.today)
+    allotment_date = Column(Date, nullable=False, default=date.today)
 
-    # Status tracking
-    # subscription_status = Column(Enum(SubscriptionStatusEnum), nullable=False, default=SubscriptionStatusEnum.OPEN)
+    # Result fields
+    shares_applied = Column(Integer, nullable=False, default=0)
+    shares_allotted = Column(Integer, nullable=False, default=0)
+    allotment_ratio = Column(Numeric(precision=10, scale=6), nullable=False, default=0.0)
+    subscription_premium = Column(Numeric(precision=20, scale=6), nullable=False, default=0.0)
 
-    # Metadata
-    subscription_purpose = Column(Text, nullable=True)
-    subscription_notes = Column(Text, nullable=True)
+    # Additional info
+    subscription_purpose = Column(Text, nullable=False, default='')
+    subscription_notes = Column(Text, nullable=False, default='')
 
     # @validates('subscription_price')
     # def validate_subscription_price(self, key, value):

@@ -15,11 +15,11 @@ class ReverseSplitRequest(CorporateActionRequest):
                                                  description="Type of corporate action")
 
     # Reverse Split Ratio Information
-    reverse_ratio_from: Annotated[int, Field(..., gt=0,
+    reverse_ratio_from: Annotated[int, Field(default=2, gt=0,
                                              description="Number of shares before reverse split (must be greater than reverse_ratio_to)")]
-    reverse_ratio_to: Annotated[int, Field(..., gt=0,
+    reverse_ratio_to: Annotated[int, Field(default=1, gt=0,
                                            description="Number of shares after reverse split (must be less than reverse_ratio_from)")]
-    reverse_multiplier: Annotated[Decimal, Field(..., max_digits=10, decimal_places=6, gt=0, lt=1,
+    reverse_multiplier: Annotated[Decimal, Field(default=0.5, max_digits=10, decimal_places=6, gt=0, lt=1,
                                                  description="Ratio of new shares to old shares (must be between 0 and 1)")]
 
     # Key Dates
@@ -28,7 +28,7 @@ class ReverseSplitRequest(CorporateActionRequest):
     effective_date: Annotated[date, Field(..., description="Date when reverse split becomes effective")]
 
     # Price and Fractional Information
-    price_adjustment_factor: Optional[Annotated[Decimal, Field(..., max_digits=10, decimal_places=6, gt=1,
+    price_adjustment_factor: Optional[Annotated[Decimal, Field(default=1.5, max_digits=10, decimal_places=6, gt=1,
                                                                description="Factor by which prices should be adjusted (old_price * factor)")]] = None
     cash_in_lieu_rate: Optional[Annotated[Decimal, Field(..., max_digits=20, decimal_places=6, ge=0,
                                                          description="Cash payment for fractional shares")]] = None

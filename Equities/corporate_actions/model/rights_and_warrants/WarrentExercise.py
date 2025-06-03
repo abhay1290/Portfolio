@@ -1,4 +1,7 @@
-from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, NUMERIC, Text
+from datetime import date
+from decimal import Decimal
+
+from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, Numeric, Text
 
 from Equities.corporate_actions.model.CorporateActionBase import CorporateActionBase
 
@@ -9,67 +12,45 @@ class WarrantExercise(CorporateActionBase):
 
     corporate_action_id = Column(Integer, ForeignKey('corporate_action.id', ondelete='CASCADE'), primary_key=True)
 
-    # Warrant details
-    exercise_price = Column(NUMERIC(precision=20, scale=6), nullable=False)
-    warrant_ratio = Column(NUMERIC(precision=10, scale=6), nullable=False)  # Warrants per share
-    exercise_ratio = Column(NUMERIC(precision=10, scale=6), nullable=False)  # Shares per warrant
-
-    # Dates
-    announcement_date = Column(Date, nullable=True)
+    # Required fields
+    exercise_price = Column(Numeric(precision=20, scale=6), nullable=False)
+    warrant_ratio = Column(Numeric(precision=10, scale=6), nullable=False)
+    exercise_ratio = Column(Numeric(precision=10, scale=6), nullable=False)
     ex_warrant_date = Column(Date, nullable=False)
-    warrant_trading_start = Column(Date, nullable=True)
-    warrant_trading_end = Column(Date, nullable=True)
     exercise_deadline = Column(Date, nullable=False)
-    settlement_date = Column(Date, nullable=True)
 
-    # Exercise conditions
-    is_cashless_exercise = Column(Boolean, default=False, nullable=False)
-    minimum_exercise_quantity = Column(Integer, nullable=True)
+    # Optional fields with defaults
+    warrant_trading_start = Column(Date, nullable=False, default=date.today)
+    warrant_trading_end = Column(Date, nullable=False, default=date.today)
+    settlement_date = Column(Date, nullable=False, default=date.today)
+    is_cashless_exercise = Column(Boolean, nullable=False, default=False)
+    minimum_exercise_quantity = Column(Integer, nullable=False, default=1)
 
-    # Valuation
-    theoretical_warrant_value = Column(NUMERIC(precision=20, scale=6), nullable=True)
-    warrant_trading_price = Column(NUMERIC(precision=20, scale=6), nullable=True)
-    intrinsic_value = Column(NUMERIC(precision=20, scale=6), nullable=True)
-    time_value = Column(NUMERIC(precision=20, scale=6), nullable=True)
+    # Valuation fields with defaults
+    theoretical_warrant_value = Column(Numeric(precision=20, scale=6), nullable=False, default=0)
+    warrant_trading_price = Column(Numeric(precision=20, scale=6), nullable=False, default=0)
+    intrinsic_value = Column(Numeric(precision=20, scale=6), nullable=False, default=0)
+    time_value = Column(Numeric(precision=20, scale=6), nullable=False, default=0)
 
-    # Status tracking
-    # warrant_status = Column(Enum(WarrantStatusEnum), nullable=False, default=WarrantStatusEnum.ACTIVE)
+    # Metadata with defaults
+    warrant_terms = Column(Text, nullable=False, default='')
+    exercise_notes = Column(Text, nullable=False, default='')
 
-    # Metadata
-    warrant_terms = Column(Text, nullable=True)
-    exercise_notes = Column(Text, nullable=True)
-
-    #
-    # @validates('exercise_price')
-    # def validate_exercise_price(self, key, value):
-    #     if value is None or value <= 0:
-    #         raise WarrantValidationError("Exercise price must be positive")
-    #     return value
-    #
-    # @validates('warrant_ratio', 'exercise_ratio')
-    # def validate_ratios(self, key, value):
-    #     if value is None or value <= 0:
-    #         raise WarrantValidationError(f"{key} must be positive")
-    #     return value
-    #
-    # @validates('ex_warrant_date', 'exercise_deadline')
-    # def validate_dates(self, key, date_value):
-    #     if date_value is None:
-    #         raise WarrantValidationError(f"{key} cannot be None")
-    #     return date_value
-
-    def calculate_theoretical_warrant_value(self, market_price):
+    def calculate_theoretical_warrant_value(self, market_price: float) -> None:
         """Calculate theoretical warrant value"""
         if market_price and self.exercise_price and self.warrant_ratio:
-            cum_warrant_price = market_price
-            ex_warrant_price = (cum_warrant_price + (self.exercise_price / self.warrant_ratio)) / (
-                    1 + (1 / self.warrant_ratio))
-            self.theoretical_warrant_value = cum_warrant_price - ex_warrant_price
+            cum_warrant_price = Decimal(str(market_price))
+            ex_warrant_price = (cum_warrant_price + (
+                    Decimal(str(self.exercise_price)) / Decimal(str(self.warrant_ratio)))) / (
+                                       1 + (1 / Decimal(str(self.warrant_ratio))))
+            self.theoretical_warrant_value = float(cum_warrant_price - ex_warrant_price)
 
-    def calculate_intrinsic_value(self, market_price):
+    def calculate_intrinsic_value(self, market_price: float) -> None:
         """Calculate intrinsic value (immediate exercise value)"""
         if market_price and self.exercise_price and self.exercise_ratio:
-            self.intrinsic_value = max(0, (market_price - self.exercise_price) * self.exercise_ratio)
+            intrinsic = max(0, (Decimal(str(market_price)) - Decimal(str(self.exercise_price))) * Decimal(
+                str(self.exercise_ratio)))
+            self.intrinsic_value = float(intrinsic)
 
     def __repr__(self):
         return (
