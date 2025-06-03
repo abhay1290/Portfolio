@@ -2,7 +2,7 @@ import logging
 
 from fastapi import FastAPI
 
-from Equities.api.equity_routers_setup import acquisition_router, bankruptcy_router, delisting_router, \
+from equity.src.api.routers.equity_routers_setup import acquisition_router, bankruptcy_router, delisting_router, \
     distribution_router, dividend_router, equity_router, exchange_offer_router, liquidation_router, merger_router, \
     reorganization_router, return_of_capital_router, reverse_split_router, rights_issue_router, special_dividend_router, \
     spin_off_router, stock_dividend_router, stock_split_router, subscription_router, tender_offer_router, \
