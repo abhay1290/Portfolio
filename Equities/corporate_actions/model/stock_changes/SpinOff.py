@@ -41,24 +41,6 @@ class SpinOff(CorporateActionBase):
     regulatory_approvals = Column(Text, nullable=True)  # JSON string of required approvals
     spinoff_notes = Column(Text, nullable=True)
 
-    # @validates('distribution_ratio')
-    # def validate_distribution_ratio(self, key, value):
-    #     if value is None or value <= 0:
-    #         raise SpinOffValidationError("Distribution ratio must be positive")
-    #     return value
-    #
-    # @validates('parent_cost_basis_allocation', 'spinoff_cost_basis_allocation')
-    # def validate_cost_basis_allocation(self, key, value):
-    #     if value is not None and (value < 0 or value > 1):
-    #         raise SpinOffValidationError(f"{key} must be between 0 and 1 if specified")
-    #     return value
-    #
-    # @validates('announcement_date', 'ex_date', 'distribution_date')
-    # def validate_dates(self, key, date_value):
-    #     if date_value is None:
-    #         raise SpinOffValidationError(f"{key} cannot be None")
-    #     return date_value
-
     def calculate_cost_basis_allocation(self, parent_fv, spinoff_fv):
         """Calculate default cost basis allocation if not provided"""
         if parent_fv and spinoff_fv and parent_fv + spinoff_fv > 0:

@@ -42,27 +42,6 @@ class Merger(CorporateActionBase):
     merger_terms = Column(Text, nullable=True)
     merger_notes = Column(Text, nullable=True)
 
-    # @validates('cash_consideration')
-    # def validate_cash_consideration(self, key, cash):
-    #     if cash is not None and cash < 0:
-    #         raise MergerValidationError("Cash consideration cannot be negative")
-    #     return cash
-    #
-    # @validates('stock_consideration_ratio')
-    # def validate_stock_ratio(self, key, ratio):
-    #     if ratio is not None and ratio <= 0:
-    #         raise MergerValidationError("Stock consideration ratio must be positive")
-    #     return ratio
-    #
-    # @validates('effective_date', 'announcement_date')
-    # def validate_dates(self, key, date_value):
-    #     if date_value is None:
-    #         raise MergerValidationError(f"{key} cannot be None")
-    #
-    #     if key == 'announcement_date' and self.effective_date and date_value >= self.effective_date:
-    #         raise MergerValidationError("Announcement date must be before effective date")
-    #     return date_value
-
     def calculate_total_consideration(self, acquirer_price: float = None):
         """Calculate total consideration value"""
         if not self.equity or not self.equity.shares_outstanding:

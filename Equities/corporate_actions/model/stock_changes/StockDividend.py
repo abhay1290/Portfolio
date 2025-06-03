@@ -30,24 +30,6 @@ class StockDividend(CorporateActionBase):
     # Metadata
     stock_dividend_notes = Column(Text, nullable=True)
 
-    # @validates('dividend_shares_per_held')
-    # def validate_dividend_ratio(self, key, value):
-    #     if value is None or value <= 0:
-    #         raise StockDividendValidationError("Dividend shares per held must be positive")
-    #     return value
-    #
-    # @validates('dividend_percentage')
-    # def validate_percentage(self, key, value):
-    #     if value is not None and (value <= 0 or value > 100):
-    #         raise StockDividendValidationError("Dividend percentage must be between 0 and 100")
-    #     return value
-    #
-    # @validates('declaration_date', 'distribution_date')
-    # def validate_dates(self, key, date_value):
-    #     if date_value is None:
-    #         raise StockDividendValidationError(f"{key} cannot be None")
-    #     return date_value
-
     def calculate_dividend_percentage(self):
         """Calculate dividend percentage from shares per held"""
         if self.dividend_shares_per_held:

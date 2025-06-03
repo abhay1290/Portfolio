@@ -23,8 +23,8 @@ from Equities.corporate_actions.analytics.formulation.delisting_and_reorganizati
 from Equities.corporate_actions.analytics.formulation.rights_and_warrants.RightsIssueExecutor import RightsIssueExecutor
 from Equities.corporate_actions.analytics.formulation.rights_and_warrants.SubscriptionExecutor import \
     SubscriptionExecutor
-from Equities.corporate_actions.analytics.formulation.rights_and_warrants.WarrentExerciseExecutor import \
-    WarrantExerciseExecutor
+from Equities.corporate_actions.analytics.formulation.rights_and_warrants.WarrentExerciseExecutor import WarrantExecutor
+
 from Equities.corporate_actions.analytics.formulation.stock_changes.ReverseSplitExecutor import ReverseSplitExecutor
 from Equities.corporate_actions.analytics.formulation.stock_changes.SpinOffExecutor import SpinOffExecutor
 from Equities.corporate_actions.analytics.formulation.stock_changes.StockDividendExecutor import StockDividendExecutor
@@ -70,7 +70,7 @@ def ca_execution_engine(ca: CorporateActionBase) -> CorporateActionExecutorBase:
     elif ca.action_type == CorporateActionTypeEnum.SUBSCRIPTION:
         return SubscriptionExecutor(ca)
     elif ca.action_type == CorporateActionTypeEnum.WARRANT_EXERCISE:
-        return WarrantExerciseExecutor(ca)
+        return WarrantExecutor(ca)
 
     # stock changes
     elif ca.action_type == CorporateActionTypeEnum.REVERSE_SPLIT:

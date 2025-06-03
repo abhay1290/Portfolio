@@ -29,24 +29,6 @@ class StockSplit(CorporateActionBase):
     # Metadata
     split_notes = Column(Text, nullable=True)
 
-    # @validates('split_ratio_from', 'split_ratio_to')
-    # def validate_ratios(self, key, value):
-    #     if value is None or value <= 0:
-    #         raise StockSplitValidationError(f"{key} must be positive")
-    #     return value
-    #
-    # @validates('split_multiplier')
-    # def validate_multiplier(self, key, value):
-    #     if value is None or value <= 1:
-    #         raise StockSplitValidationError("Split multiplier must be greater than 1")
-    #     return value
-    #
-    # @validates('ex_split_date', 'effective_date')
-    # def validate_dates(self, key, date_value):
-    #     if date_value is None:
-    #         raise StockSplitValidationError(f"{key} cannot be None")
-    #     return date_value
-
     def calculate_split_multiplier(self):
         """Calculate split multiplier"""
         if self.split_ratio_from and self.split_ratio_to:

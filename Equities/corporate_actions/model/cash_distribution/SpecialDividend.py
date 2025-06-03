@@ -29,31 +29,6 @@ class SpecialDividend(CorporateActionBase):
     net_special_dividend_amount = Column(NUMERIC(precision=20, scale=6), nullable=True)
     special_dividend_marketcap_in_dividend_currency = Column(NUMERIC(precision=20, scale=2), nullable=True)
 
-    #
-    # @validates('special_dividend_amount')
-    # def validate_dividend_amount(self, key: str, dividend_amount: float):
-    #     if dividend_amount is None or dividend_amount <= 0:
-    #         raise SpecialDividendValidationError("Special dividend amount must be positive")
-    #     return dividend_amount
-    #
-    # @validates('eligible_outstanding_shares')
-    # def validate_eligible_shares(self, key: str, eligible_shares: float):
-    #     if eligible_shares is None or eligible_shares <= 0:
-    #         raise SpecialDividendValidationError("Eligible outstanding shares must be positive")
-    #     return eligible_shares
-    #
-    # @validates('dividend_tax_rate')
-    # def validate_tax_rate(self, key: str, tax_rate: float):
-    #     if tax_rate is not None and not (0.0 <= tax_rate <= 1.0):
-    #         raise SpecialDividendValidationError("Tax rate must be between 0.0 and 1.0")
-    #     return tax_rate
-    #
-    # @validates('payment_date', 'declaration_date')
-    # def validate_dividend_dates(self, key, date_value):
-    #     if date_value is None:
-    #         raise SpecialDividendValidationError(f"{key} cannot be None")
-    #     return date_value
-
     def calculate_net_dividend(self):
         """Calculate net special dividend amount after tax"""
         if self.is_taxable and self.dividend_tax_rate:

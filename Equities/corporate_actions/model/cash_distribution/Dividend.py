@@ -29,46 +29,6 @@ class Dividend(CorporateActionBase):
     net_dividend_amount = Column(NUMERIC(precision=20, scale=6), nullable=True)
     dividend_marketcap_in_dividend_currency = Column(NUMERIC(precision=20, scale=2), nullable=True)
 
-    # @validates('dividend_amount')
-    # def validate_dividend_amount(self, key: str, dividend_amount: float) -> float:
-    #     try:
-    #         dividend_amount = float(dividend_amount)
-    #     except (TypeError, ValueError):
-    #         raise DividendValidationError("Dividend amount must be a number")
-    #
-    #     if dividend_amount <= 0:
-    #         raise DividendValidationError("Dividend amount must be positive")
-    #     return dividend_amount
-    #
-    # @validates('eligible_outstanding_shares')
-    # def validate_eligible_shares(self, key: str, eligible_shares: float) -> float:
-    #     try:
-    #         eligible_shares = float(eligible_shares)
-    #     except (TypeError, ValueError):
-    #         raise DividendValidationError("Eligible outstanding shares must be a number")
-    #
-    #     if eligible_shares <= 0:
-    #         raise DividendValidationError("Eligible outstanding shares must be positive")
-    #     return eligible_shares
-    #
-    # @validates('dividend_tax_rate')
-    # def validate_tax_rates(self, key: str, tax_rate: Optional[float]) -> Optional[float]:
-    #     if tax_rate is not None:
-    #         try:
-    #             tax_rate = float(tax_rate)
-    #         except (TypeError, ValueError):
-    #             raise DividendValidationError("Tax rate must be a number")
-    #
-    #         if not (0.0 <= tax_rate <= 1.0):
-    #             raise DividendValidationError("Tax rate must be between 0.0 and 1.0")
-    #     return tax_rate
-    #
-    # @validates('payment_date', 'declaration_date')
-    # def validate_dividend_dates(self, key, date_value):
-    #     if date_value is None:
-    #         raise DividendValidationError(f"{key} cannot be None")
-    #     return date_value
-
     def calculate_net_dividend(self):
         """Calculate net dividend amount after tax"""
         if self.is_taxable and self.dividend_tax_rate:

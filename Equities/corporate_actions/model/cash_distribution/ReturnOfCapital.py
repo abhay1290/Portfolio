@@ -31,35 +31,6 @@ class ReturnOfCapital(CorporateActionBase):
     total_cost_basis_reduction = Column(NUMERIC(precision=20, scale=6), nullable=True)
 
 
-#
-# @validates('return_amount')
-# def validate_return_amount(self, key, return_amount):
-#     if return_amount is None or return_amount <= 0:
-#         raise ReturnOfCapitalValidationError("Return amount must be positive")
-#     return return_amount
-#
-#
-# @validates('eligible_outstanding_shares')
-# def validate_eligible_shares(self, key, eligible_shares):
-#     if eligible_shares is None or eligible_shares <= 0:
-#         raise ReturnOfCapitalValidationError("Eligible outstanding shares must be positive")
-#     return eligible_shares
-#
-#
-# @validates('tax_rate')
-# def validate_tax_rate(self, key, tax_rate):
-#     if tax_rate is not None and not (0 <= tax_rate <= 1):
-#         raise ReturnOfCapitalValidationError("Tax rate must be between 0 and 1")
-#     return tax_rate
-#
-#
-# @validates('payment_date', 'declaration_date', 'record_date')
-# def validate_dates(self, key, date_value):
-#     if date_value is None:
-#         raise ReturnOfCapitalValidationError(f"{key} cannot be None")
-#     return date_value
-
-
 def calculate_total_return(self):
     """Calculate total return amount and cost basis reduction"""
     self.total_return_amount = self.return_amount * self.eligible_outstanding_shares

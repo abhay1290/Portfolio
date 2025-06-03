@@ -29,24 +29,6 @@ class ReverseSplit(CorporateActionBase):
     reverse_split_reason = Column(Text, nullable=True)
     reverse_split_notes = Column(Text, nullable=True)
 
-    # @validates('reverse_ratio_from', 'reverse_ratio_to')
-    # def validate_ratios(self, key, value):
-    #     if value is None or value <= 0:
-    #         raise ReverseSplitValidationError(f"{key} must be positive")
-    #     return value
-    #
-    # @validates('reverse_multiplier')
-    # def validate_multiplier(self, key, value):
-    #     if value is None or value <= 0 or value >= 1:
-    #         raise ReverseSplitValidationError("Reverse multiplier must be between 0 and 1")
-    #     return value
-    #
-    # @validates('ex_split_date', 'effective_date')
-    # def validate_dates(self, key, date_value):
-    #     if date_value is None:
-    #         raise ReverseSplitValidationError(f"{key} cannot be None")
-    #     return date_value
-
     def calculate_reverse_multiplier(self):
         """Calculate reverse split multiplier"""
         if self.reverse_ratio_from and self.reverse_ratio_to:

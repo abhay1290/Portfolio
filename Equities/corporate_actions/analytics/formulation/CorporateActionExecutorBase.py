@@ -181,23 +181,23 @@ class CorporateActionExecutorBase(ABC):
             confidence_score=1.0
         )
 
-    def rollback(self, log_id: int, reason: str) -> bool:
-        """Rollback corporate action execution"""
-        try:
-            with self.equity.lock_for_processing(self.session):
-                self.equity.rollback_to_state(
-                    session=self.session,
-                    log_id=log_id,
-                    rollback_reason=reason,
-                    rolled_back_by="system"
-                )
-
-                # Reset corporate action status
-                self.corporate_action.reset_for_retry()
-
-            logging.info(f"Successfully rolled back corporate action {self.corporate_action.id}")
-            return True
-
-        except Exception as e:
-            logging.error(f"Failed to rollback corporate action {self.corporate_action.id}: {str(e)}")
-            return False
+    # def rollback(self, log_id: int, reason: str) -> bool:
+    #     """Rollback corporate action execution"""
+    #     try:
+    #         with self.equity.lock_for_processing(self.session):
+    #             self.equity.rollback_to_state(
+    #                 session=self.session,
+    #                 log_id=log_id,
+    #                 rollback_reason=reason,
+    #                 rolled_back_by="system"
+    #             )
+    #
+    #             # Reset corporate action status
+    #             self.corporate_action.reset_for_retry()
+    #
+    #         logging.info(f"Successfully rolled back corporate action {self.corporate_action.id}")
+    #         return True
+    #
+    #     except Exception as e:
+    #         logging.error(f"Failed to rollback corporate action {self.corporate_action.id}: {str(e)}")
+    #         return False

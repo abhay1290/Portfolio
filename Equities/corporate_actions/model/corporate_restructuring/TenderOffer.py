@@ -43,24 +43,6 @@ class TenderOffer(CorporateActionBase):
     offer_terms = Column(Text, nullable=True)
     tender_notes = Column(Text, nullable=True)
 
-    # @validates('offer_price')
-    # def validate_offer_price(self, key, price):
-    #     if price is None or price <= 0:
-    #         raise TenderOfferValidationError("Offer price must be positive")
-    #     return price
-    #
-    # @validates('minimum_tender_condition')
-    # def validate_minimum_tender(self, key, condition):
-    #     if condition is not None and (condition <= 0 or condition > 1):
-    #         raise TenderOfferValidationError("Minimum tender condition must be between 0 and 1")
-    #     return condition
-    #
-    # @validates('offer_date', 'expiration_date')
-    # def validate_dates(self, key, date_value):
-    #     if date_value is None:
-    #         raise TenderOfferValidationError(f"{key} cannot be None")
-    #     return date_value
-
     def calculate_premium(self, key, market_price: float):
         """Calculate premium over market price"""
         if market_price <= 0:
