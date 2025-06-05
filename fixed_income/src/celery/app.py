@@ -15,7 +15,7 @@ celery_app = Celery(
 )
 
 # Import the task module explicitly to ensure registration
-import FixedIncome.src.celery.tasks.analytics  # noqa
+import fixed_income.src.celery.tasks.analytics  # noqa
 
 celery_app.autodiscover_tasks([
     "FixedIncome.tasks.analytics",

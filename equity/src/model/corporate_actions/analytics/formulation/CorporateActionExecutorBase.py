@@ -8,8 +8,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from equity.src.database import SessionLocal, get_db
-from equity.src.model import Equity
 from equity.src.model.corporate_actions.model.CorporateActionBase import CorporateActionBase
+from equity.src.model.equity import Equity
 from equity.src.utils.Decorators import audit_trail, performance_monitor, retry_on_failure, transaction_rollback
 from equity.src.utils.Exceptions import CorporateActionError
 from equity.src.utils.quantlib_mapper import from_ql_date, to_ql_business_day_convention, to_ql_calendar, to_ql_date

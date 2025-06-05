@@ -36,8 +36,6 @@ from equity.src.api.corporate_action_schema.stock_changes.stock_split_schema imp
 from equity.src.api.equity_schema.Equity_Schema import EquityRequest, EquityResponse
 from equity.src.api.routers.corporate_action_crud_router import CorporateActionGenericRouter
 from equity.src.api.routers.equity_crud_router import EquityGenericRouter
-from equity.src.model.Equity import Equity
-
 from equity.src.model.corporate_actions.model.CorporateActionBase import CorporateActionBase
 from equity.src.model.corporate_actions.model.cash_distribution.Distribution import Distribution
 from equity.src.model.corporate_actions.model.cash_distribution.Dividend import Dividend
@@ -58,6 +56,7 @@ from equity.src.model.corporate_actions.model.stock_changes.ReverseSplit import 
 from equity.src.model.corporate_actions.model.stock_changes.SpinOff import SpinOff
 from equity.src.model.corporate_actions.model.stock_changes.StockDividend import StockDividend
 from equity.src.model.corporate_actions.model.stock_changes.StockSplit import StockSplit
+from equity.src.model.equity.Equity import Equity
 
 equity_router = EquityGenericRouter(
     model=Equity,

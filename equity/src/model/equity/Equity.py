@@ -9,12 +9,12 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Session, relationship, validates
 
 from equity.src.database import Base
-from equity.src.model.CorporateActionHistoryLog import CorporateActionHistoryLog
 from equity.src.model.corporate_actions.enums.CorporateActionTypeEnum import CorporateActionTypeEnum
 from equity.src.model.corporate_actions.model.CorporateActionBase import CorporateActionBase
 from equity.src.model.enums.BusinessDayConventionEnum import BusinessDayConventionEnum
 from equity.src.model.enums.CalenderEnum import CalendarEnum
 from equity.src.model.enums.CurrencyEnum import CurrencyEnum
+from equity.src.model.equity.CorporateActionHistoryLog import CorporateActionHistoryLog
 from equity.src.utils.Decorators import audit_trail, transaction_rollback, validation_required
 from equity.src.utils.Exceptions import CorporateActionError, EquityValidationError
 
@@ -26,7 +26,7 @@ class Equity(Base):
         Index('idx_equity_currency', 'currency'),
         Index('idx_equity_updated_at', 'updated_at'),
     )
-    API_Path = "Equity"
+    API_Path = ""
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

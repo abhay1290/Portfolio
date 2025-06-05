@@ -10,8 +10,6 @@ from sqlalchemy.orm import Session, with_polymorphic
 
 from equity.src.celery.app import celery_app
 from equity.src.database import SessionLocal
-from equity.src.model import CorporateActionHistoryLog
-from equity.src.model import Equity
 from equity.src.model.corporate_actions.analytics.CorporateActionExecutionEngine import ca_execution_engine
 from equity.src.model.corporate_actions.enums.PriorityEnum import PriorityEnum
 from equity.src.model.corporate_actions.enums.StatusEnum import StatusEnum
@@ -35,6 +33,7 @@ from equity.src.model.corporate_actions.model.stock_changes.ReverseSplit import 
 from equity.src.model.corporate_actions.model.stock_changes.SpinOff import SpinOff
 from equity.src.model.corporate_actions.model.stock_changes.StockDividend import StockDividend
 from equity.src.model.corporate_actions.model.stock_changes.StockSplit import StockSplit
+from equity.src.model.equity import CorporateActionHistoryLog, Equity
 from equity.src.utils.Exceptions import CorporateActionError, CorporateActionValidationError, ProcessingLockError
 
 logger = logging.getLogger(__name__)

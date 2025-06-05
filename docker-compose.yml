@@ -1,67 +1,312 @@
 version: '3.8'
 
-services:
-  equity-service:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    environment:
-      - DB_HOST=postgres
-      - DB_NAME=equity
-      - DB_USER=postgres
-      - DB_PASSWORD=${DB_PASSWORD:-postgres}
-    depends_on:
-      - redis
-      - postgres
-    volumes:
-      - ./equity:/app
-    restart: unless-stopped
-
-  postgres:
-    image: postgres:13-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: equity
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "4200:4200"
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:6-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  celery-worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: celery -A src.celery.app worker --loglevel=info
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-    depends_on:
-      - redis
-      - postgres
-    volumes:
-      - ./equity:/app
-    restart: unless-stopped
+networks:
+  financial_services_network:
+    driver: bridge
 
 volumes:
-  postgres_data:
-  redis_data:
+  equity_postgres_data:
+  fixed_income_postgres_data:
+  equity_redis_data:
+  fixed_income_redis_data:
+  shared_redis_data:
+
+services:
+  # ======================
+  # DATABASE SERVICES
+  # ======================
+
+  # Equity Database
+  equity-postgres:
+    image: postgres:15-alpine
+    container_name: equity-postgres
+    environment:
+      POSTGRES_DB: ${EQUITY_DB_NAME}
+      POSTGRES_USER: ${EQUITY_DB_USER}
+      POSTGRES_PASSWORD: ${EQUITY_DB_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - equity_postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-equity-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - financial_services_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${EQUITY_DB_USER} -d ${EQUITY_DB_NAME}" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Fixed Income Database
+  fixed-income-postgres:
+    image: postgres:15-alpine
+    container_name: fixed-income-postgres
+    environment:
+      POSTGRES_DB: ${FIXED_INCOME_DB_NAME}
+      POSTGRES_USER: ${FIXED_INCOME_DB_USER}
+      POSTGRES_PASSWORD: ${FIXED_INCOME_DB_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - fixed_income_postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-fixed-income-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5433:5432"
+    networks:
+      - financial_services_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${FIXED_INCOME_DB_USER} -d ${FIXED_INCOME_DB_NAME}" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # ======================
+  # REDIS SERVICES
+  # ======================
+
+  # Equity Redis
+  equity-redis:
+    image: redis:7-alpine
+    container_name: equity-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - equity_redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - financial_services_network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Fixed Income Redis
+  fixed-income-redis:
+    image: redis:7-alpine
+    container_name: fixed-income-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - fixed_income_redis_data:/data
+    ports:
+      - "6380:6379"
+    networks:
+      - financial_services_network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Shared Redis (for inter-service communication)
+  shared-redis:
+    image: redis:7-alpine
+    container_name: shared-redis
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - shared_redis_data:/data
+    ports:
+      - "6381:6379"
+    networks:
+      - financial_services_network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # ======================
+  # APPLICATION SERVICES
+  # ======================
+
+  # Equity Service
+  equity-service:
+    build:
+      context: ./equity
+      dockerfile: Dockerfile
+    container_name: equity-service
+    environment:
+      - EQUITY_DB_HOST=equity-postgres
+      - EQUITY_DB_PORT=5432
+      - EQUITY_DB_NAME=${EQUITY_DB_NAME}
+      - EQUITY_DB_USER=${EQUITY_DB_USER}
+      - EQUITY_DB_PASSWORD=${EQUITY_DB_PASSWORD}
+      - EQUITY_REDIS_HOST=equity-redis
+      - EQUITY_REDIS_PORT=6379
+      - EQUITY_CELERY_BROKER_URL=redis://equity-redis:6379/0
+      - EQUITY_CELERY_RESULT_BACKEND=redis://equity-redis:6379/1
+      - EQUITY_API_HOST=0.0.0.0
+      - EQUITY_API_PORT=8001
+      - SHARED_REDIS_HOST=shared-redis
+      - SHARED_REDIS_PORT=6379
+      - FIXED_INCOME_SERVICE_URL=http://fixed-income-service:8002
+      - DEBUG=${DEBUG}
+      - LOG_LEVEL=${LOG_LEVEL}
+    ports:
+      - "8001:8001"
+    depends_on:
+      equity-postgres:
+        condition: service_healthy
+      equity-redis:
+        condition: service_healthy
+    networks:
+      - financial_services_network
+    volumes:
+      - ./equity_service/logs:/app/logs
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8001/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Fixed Income Service
+  fixed-income-service:
+    build:
+      context: ./fixed_income
+      dockerfile: Dockerfile
+    container_name: fixed-income-service
+    environment:
+      - FIXED_INCOME_DB_HOST=fixed-income-postgres
+      - FIXED_INCOME_DB_PORT=5432
+      - FIXED_INCOME_DB_NAME=${FIXED_INCOME_DB_NAME}
+      - FIXED_INCOME_DB_USER=${FIXED_INCOME_DB_USER}
+      - FIXED_INCOME_DB_PASSWORD=${FIXED_INCOME_DB_PASSWORD}
+      - FIXED_INCOME_REDIS_HOST=fixed-income-redis
+      - FIXED_INCOME_REDIS_PORT=6379
+      - FIXED_INCOME_CELERY_BROKER_URL=redis://fixed-income-redis:6379/0
+      - FIXED_INCOME_CELERY_RESULT_BACKEND=redis://fixed-income-redis:6379/1
+      - FIXED_INCOME_API_HOST=0.0.0.0
+      - FIXED_INCOME_API_PORT=8002
+      - SHARED_REDIS_HOST=shared-redis
+      - SHARED_REDIS_PORT=6379
+      - EQUITY_SERVICE_URL=http://equity-service:8001
+      - DEBUG=${DEBUG}
+      - LOG_LEVEL=${LOG_LEVEL}
+    ports:
+      - "8002:8002"
+    depends_on:
+      fixed-income-postgres:
+        condition: service_healthy
+      fixed-income-redis:
+        condition: service_healthy
+    networks:
+      - financial_services_network
+    volumes:
+      - ./fixed_income_service/logs:/app/logs
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8002/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # ======================
+  # CELERY WORKERS
+  # ======================
+
+  # Equity Celery Worker
+  equity-celery-worker:
+    build:
+      context: ./equity
+      dockerfile: Dockerfile
+    container_name: equity-celery-worker
+    command: celery -A celery_app worker --loglevel=info --concurrency=4
+    environment:
+      - EQUITY_DB_HOST=equity-postgres
+      - EQUITY_DB_PORT=5432
+      - EQUITY_DB_NAME=${EQUITY_DB_NAME}
+      - EQUITY_DB_USER=${EQUITY_DB_USER}
+      - EQUITY_DB_PASSWORD=${EQUITY_DB_PASSWORD}
+      - EQUITY_REDIS_HOST=equity-redis
+      - EQUITY_REDIS_PORT=6379
+      - EQUITY_CELERY_BROKER_URL=redis://equity-redis:6379/0
+      - EQUITY_CELERY_RESULT_BACKEND=redis://equity-redis:6379/1
+      - DEBUG=${DEBUG}
+      - LOG_LEVEL=${LOG_LEVEL}
+    depends_on:
+      equity-postgres:
+        condition: service_healthy
+      equity-redis:
+        condition: service_healthy
+    networks:
+      - financial_services_network
+    volumes:
+      - ./equity_service/logs:/app/logs
+    restart: unless-stopped
+
+  # Fixed Income Celery Worker
+  fixed-income-celery-worker:
+    build:
+      context: ./fixed_income
+      dockerfile: Dockerfile
+    container_name: fixed-income-celery-worker
+    command: celery -A celery_app worker --loglevel=info --concurrency=4
+    environment:
+      - FIXED_INCOME_DB_HOST=fixed-income-postgres
+      - FIXED_INCOME_DB_PORT=5432
+      - FIXED_INCOME_DB_NAME=${FIXED_INCOME_DB_NAME}
+      - FIXED_INCOME_DB_USER=${FIXED_INCOME_DB_USER}
+      - FIXED_INCOME_DB_PASSWORD=${FIXED_INCOME_DB_PASSWORD}
+      - FIXED_INCOME_REDIS_HOST=fixed-income-redis
+      - FIXED_INCOME_REDIS_PORT=6379
+      - FIXED_INCOME_CELERY_BROKER_URL=redis://fixed-income-redis:6379/0
+      - FIXED_INCOME_CELERY_RESULT_BACKEND=redis://fixed-income-redis:6379/1
+      - DEBUG=${DEBUG}
+      - LOG_LEVEL=${LOG_LEVEL}
+    depends_on:
+      fixed-income-postgres:
+        condition: service_healthy
+      fixed-income-redis:
+        condition: service_healthy
+    networks:
+      - financial_services_network
+    volumes:
+      - ./fixed_income_service/logs:/app/logs
+    restart: unless-stopped
+
+  # ======================
+  # MONITORING & UTILITIES
+  # ======================
+
+  # Redis Commander (Optional - for Redis management)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: redis-commander
+    environment:
+      - REDIS_HOSTS=equity:equity-redis:6379,fixed-income:fixed-income-redis:6379,shared:shared-redis:6379
+    ports:
+      - "8081:8081"
+    networks:
+      - financial_services_network
+    depends_on:
+      - equity-redis
+      - fixed-income-redis
+      - shared-redis
+    restart: unless-stopped
+
+  # pgAdmin (Optional - for database management)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "8080:80"
+    networks:
+      - financial_services_network
+    volumes:
+      - ./pgadmin:/var/lib/pgadmin
+    depends_on:
+      - equity-postgres
+      - fixed-income-postgres
+    restart: unless-stopped

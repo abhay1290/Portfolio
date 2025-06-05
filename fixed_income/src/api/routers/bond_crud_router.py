@@ -7,6 +7,7 @@ from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from fixed_income.src.celery.tasks.analytics import compute_bond_analytics
 from fixed_income.src.database.session import get_db
 from fixed_income.src.model.bonds.BondBase import BondBase
 

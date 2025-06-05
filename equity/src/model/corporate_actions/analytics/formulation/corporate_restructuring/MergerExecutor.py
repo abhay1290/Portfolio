@@ -3,11 +3,11 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, Optional
 
-from equity.src.model import Equity
 from equity.src.model.corporate_actions.analytics.formulation.CorporateActionExecutorBase import \
     CorporateActionExecutorBase
 from equity.src.model.corporate_actions.enums.MergerTypeEnum import MergerTypeEnum
 from equity.src.model.corporate_actions.model.corporate_restructuring.Merger import Merger
+from equity.src.model.equity import Equity
 from equity.src.utils.Decorators import performance_monitor
 from equity.src.utils.Exceptions import MergerValidationError
 
