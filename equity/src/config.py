@@ -59,8 +59,9 @@ class Settings:
     SHARED_REDIS_PORT = int(os.getenv("SHARED_REDIS_PORT", "6379"))
     SHARED_REDIS_URL = f"redis://{SHARED_REDIS_HOST}:{SHARED_REDIS_PORT}"
 
-    # Fixed Income Service URL (for inter-service calls)
-    FIXED_INCOME_SERVICE_URL = os.getenv("FIXED_INCOME_SERVICE_URL", "http://fixed-income-service:8002")
+    # Portfolio Service URL (for inter-service calls)
+    EXTERNAL_SERVICE_TIMEOUT = "30"
+    PORTFOLIO_SERVICE_URL = os.getenv("PORTFOLIO_SERVICE_URL", "http://portfolio-service:8003")
 
 
 # Instantiate the config

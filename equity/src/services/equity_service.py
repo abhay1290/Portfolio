@@ -22,7 +22,7 @@ class EquityService:
             tags=["equities"]
         )
 
-    async def create_equity(
+    async def create_equity_instrument(
             self,
             equity_data: EquityRequest,
             db: db_dependency,
@@ -48,7 +48,7 @@ class EquityService:
                 detail="Failed to create equity"
             )
 
-    async def get_equities(
+    async def get_equity_instruments(
             self,
             db: db_dependency,
             skip: int = 0,
@@ -56,22 +56,22 @@ class EquityService:
             current_user: dict = Depends(get_current_user)
     ) -> List[EquityResponse]:
         """
-        Get list of equities with pagination
+        Get list of equity instruments with pagination
         """
         return await self.router.read_items(db, skip, limit)
 
-    async def get_equity(
+    async def get_equity_instrument(
             self,
             equity_id: str,
             db: db_dependency,
             current_user: dict = Depends(get_current_user)
     ) -> EquityResponse:
         """
-        Get a single equity by ID
+        Get a single equity instrument by equity_id
         """
         return await self.router.read_item(equity_id, db)
 
-    async def update_equity(
+    async def update_equity_instrument(
             self,
             equity_id: str,
             equity_data: EquityRequest,
@@ -80,7 +80,7 @@ class EquityService:
             portfolio_service: PortfolioServiceClient = portfolio_service_dependency
     ) -> EquityResponse:
         """
-        Update an existing equity
+        Update an existing equity instrument
         """
         # If portfolio_id is being updated, validate the new portfolio exists
         if equity_data.portfolio_id:
@@ -88,24 +88,7 @@ class EquityService:
 
         return await self.router.update_item(equity_id, equity_data, db)
 
-    # async def partial_update_equity(
-    #         self,
-    #         equity_id: str,
-    #         equity_data: EquityRequest,
-    #         db: db_dependency,
-    #         current_user: dict = Depends(get_current_user),
-    #         portfolio_service: PortfolioServiceClient = portfolio_service_dependency
-    # ) -> EquityResponse:
-    #     """
-    #     Partially update an existing equity
-    #     """
-    #     # If portfolio_id is being updated, validate the new portfolio exists
-    #     if equity_data.portfolio_id:
-    #         await portfolio_service.get_portfolio(equity_data.portfolio_id, current_user.get("access_token"))
-    #
-    #     return await self.router.partial_update_item(equity_id, equity_data, db)
-
-    async def get_equities_by_portfolio(
+    async def get_equities_by_portfolio_id(
             self,
             portfolio_id: str,
             db: db_dependency,
@@ -115,7 +98,7 @@ class EquityService:
             limit: int = 100
     ) -> List[EquityResponse]:
         """
-        Get all equities for a specific portfolio
+        Get all equity instruments for a specific portfolio
         """
         # First validate the portfolio exists and user has access
         await portfolio_service.get_portfolio(portfolio_id, current_user.get("access_token"))

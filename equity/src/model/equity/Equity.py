@@ -74,7 +74,7 @@ class Equity(Base):
     portfolios = relationship(
         "Portfolio",
         secondary=portfolio_equity_association,
-        back_populates="equities",
+        back_populates="equity",
         lazy="dynamic"
     )
 

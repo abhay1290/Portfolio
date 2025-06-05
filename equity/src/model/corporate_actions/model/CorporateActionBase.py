@@ -69,7 +69,7 @@ class CorporateActionBase(Base):
     error_count = Column(Integer, default=0, nullable=False)
 
     # Relationships
-    equity = relationship("Equity", back_populates="corporate_actions")
+    equity = relationship("Equity", back_populates="corporate_action")
 
     @validates('execution_date', 'record_date')
     def validate_dates(self, key, date_value):
