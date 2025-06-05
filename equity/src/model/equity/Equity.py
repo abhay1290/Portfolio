@@ -17,6 +17,7 @@ from equity.src.model.enums.CurrencyEnum import CurrencyEnum
 from equity.src.model.equity.CorporateActionHistoryLog import CorporateActionHistoryLog
 from equity.src.utils.Decorators import audit_trail, transaction_rollback, validation_required
 from equity.src.utils.Exceptions import CorporateActionError, EquityValidationError
+from portfolio.src.model.Portfolio import portfolio_equity_association
 
 
 class Equity(Base):
@@ -68,6 +69,13 @@ class Equity(Base):
         "CorporateActionBase",
         back_populates="equity",
         cascade="all, delete-orphan"
+    )
+
+    portfolios = relationship(
+        "Portfolio",
+        secondary=portfolio_equity_association,
+        back_populates="equities",
+        lazy="dynamic"
     )
 
     def __repr__(self):

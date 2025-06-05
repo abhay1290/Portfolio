@@ -7,6 +7,8 @@ from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from equity.src.database.session import get_db
+
 logger = logging.getLogger(__name__)
 
 ModelType = TypeVar("ModelType")
@@ -16,20 +18,10 @@ logger.debug(f"ModelType: {ModelType}")
 logger.debug(f"CreateSchemaType: {CreateSchemaType}")
 logger.debug(f"ResponseSchemaType: {ResponseSchemaType}")
 
-
-def get_db():
-    from Database.database import SessionLocal
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 db_dependency = Annotated[Session, Depends(get_db)]
 
 
-class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
+class EquityGenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
     def __init__(
             self,
             model: Type[ModelType],
@@ -260,3 +252,85 @@ class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
                 detail="Could not delete item.",
             )
         return None
+
+
+
+import logging
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+# Import routers from a centralized module
+from equity.src.api.routers.equity_routers_setup import (
+    acquisition_router,
+    bankruptcy_router,
+    delisting_router,
+    distribution_router,
+    dividend_router,
+    equity_router,
+    exchange_offer_router,
+    liquidation_router,
+    merger_router,
+    reorganization_router,
+    return_of_capital_router,
+    reverse_split_router,
+    rights_issue_router,
+    special_dividend_router,
+    spin_off_router,
+    stock_dividend_router,
+    stock_split_router,
+    subscription_router,
+    tender_offer_router,
+    warrant_exercise_router
+)
+from equity.src.config import settings
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("equity_service.log")
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# Initialize FastAPI application
+app = FastAPI(
+    title="Equity Service",
+    version="1.0.0",
+    description="Microservice for equity and corporate action management",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc"
+)
+
+# # Configure CORS
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
+
+@app.get("/health", tags=["monitoring"])
+async def health_check():
+    """Endpoint for service health monitoring"""
+    return {
+        "status": "healthy",
+        "version": settings.VERSION,
+        "service": settings.SERVICE_NAME,
+        # Additional health indicators:
+        "database_status": "connected",  # You would check DB connection
+        "redis_status": "connected"  # And other dependencies
+    }
+
+
+# Organize routers by category
+EQUITY_ROUTERS = [
+    (equity_router, "/api/v1/equities", "equities")
+]
+
+

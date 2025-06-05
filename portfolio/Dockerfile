@@ -26,10 +26,10 @@ RUN useradd -m portfoliouser && chown -R portfoliouser:portfoliouser /app
 USER portfoliouser
 
 # Expose the port the app runs on
-EXPOSE 8001
+EXPOSE 8003
 
 # Command to run the application
-CMD ["python", "src/main.py"]
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8003"]
 
 
 ## Dockerfile

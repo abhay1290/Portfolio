@@ -6,8 +6,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from equity.src.config import settings
-from equity.src.database.session import get_db
+from fixed_income.src.config import settings
+from fixed_income.src.database import get_db
 
 logger = logging.getLogger(__name__)
 

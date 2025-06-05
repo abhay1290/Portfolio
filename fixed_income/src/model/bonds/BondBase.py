@@ -1,9 +1,11 @@
 from sqlalchemy import Column, Date, DateTime, Enum, Float, Integer, String, func
+from sqlalchemy.orm import relationship
 
 from fixed_income.src.database import Base
 from fixed_income.src.model.enums import BondTypeEnum, BusinessDayConventionEnum, CalendarEnum, CompoundingEnum, \
     DayCountConventionEnum, FrequencyEnum
 from fixed_income.src.model.enums.CurrencyEnum import CurrencyEnum
+from portfolio.src.model.Portfolio import portfolio_bond_association
 
 
 class BondBase(Base):
@@ -37,3 +39,10 @@ class BondBase(Base):
                                   default=DayCountConventionEnum.ACTUAL_365_FIXED)
     compounding = Column(Enum(CompoundingEnum), nullable=False, default=CompoundingEnum.COMPOUNDED)
     frequency = Column(Enum(FrequencyEnum), nullable=False, default=FrequencyEnum.ANNUAL)
+
+    portfolios = relationship(
+        "Portfolio",
+        secondary=portfolio_bond_association,
+        back_populates="bonds",
+        lazy="dynamic"
+    )

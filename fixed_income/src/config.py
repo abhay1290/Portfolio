@@ -59,9 +59,6 @@ class Settings:
     SHARED_REDIS_PORT = int(os.getenv("SHARED_REDIS_PORT", "6379"))
     SHARED_REDIS_URL = f"redis://{SHARED_REDIS_HOST}:{SHARED_REDIS_PORT}"
 
-    # Equity Service URL (for inter-service calls)
-    EQUITY_SERVICE_URL = os.getenv("EQUITY_SERVICE_URL", "http://equity-service:8001")
-
-
+    
 # Instantiate the config
 settings = Settings()
