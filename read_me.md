@@ -1,77 +1,94 @@
                   # Financial Services Microservices
 
-A complete microservices architecture for financial services with separate Equity and Fixed Income services, each with their own databases, Redis instances, and Celery workers.
+A complete microservices architecture for financial services with Equity, Fixed Income, and Portfolio services, where the Portfolio service acts as the primary access point for client operations.
 
 ## Architecture Overview
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  Equity Service │    │Fixed Income Svc │    │  Shared Redis   │
-│   (Port 8001)   │    │   (Port 8002)   │    │   (Port 6381)   │
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  Equity Service │    │Fixed Income Svc │    │  Portfolio Svc  │    │  Shared Redis   │
+│   (Port 8001)   │    │   (Port 8002)   │    │   (Port 8000)   │    │   (Port 6381)   │
+└────────┬────────┘    └────────┬────────┘    └────────┬────────┘    └────────┬────────┘
+         │                      │                      │                      │
+         │                      │                      │                      │
+┌────────▼────────┐    ┌────────▼────────┐    ┌────────▼────────┐             │
+│  Equity Postgres│    │ FI Postgres DB  │    │ Portfolio PG DB │             │
+│   (Port 5432)   │    │   (Port 5433)   │    │   (Port 5434)   │             │
+└─────────────────┘    └─────────────────┘    └─────────────────┘             │
+         │                      │                      │                      │
+         │                      │                      │                      │
+┌────────▼────────┐    ┌────────▼────────┐    ┌────────▼────────┐             │
+│  Equity Redis   │    │   FI Redis      │    │ Portfolio Redis │◄───────────-┘
+│   (Port 6379)   │    │   (Port 6380)   │    │   (Port 6382)   │
+└────────┬────────┘    └────────┬────────┘    └────────┬────────┘
+         │                      │                      │
+         │                      │                      │
+┌────────▼────────┐    ┌────────▼────────┐    ┌────────▼────────┐
+│Equity Celery Wkr│    │ FI Celery Wkr   │    │Portfolio Celery │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-┌─────────────────┐    ┌─────────────────┐               │
-│ Equity Postgres │    │ FI Postgres DB  │               │
-│   (Port 5432)   │    │   (Port 5433)   │               │
-└─────────────────┘    └─────────────────┘               │
-         │                       │                       │
-┌─────────────────┐    ┌─────────────────┐               │
-│  Equity Redis   │    │   FI Redis      │◄──────────────┘
-│   (Port 6379)   │    │   (Port 6380)   │
-└─────────────────┘    └─────────────────┘
-         │                       │
-┌─────────────────┐    ┌─────────────────┐
-│Equity Celery Wkr│    │ FI Celery Wkr   │
-└─────────────────┘    └─────────────────┘
-```
-
+         ▲                      ▲                      ▲
+         └──────────┬──────────┘                      │
+                    │                                 │
+                    └─────────────────────────────────┘
 ## Services
 
-### 1. Equity Service
+### 1. Portfolio Service (Primary Access Point)
+- **Port**: 8000 (main client-facing port)
+- **Database**: portfolio-postgres (Port 5434)
+- **Redis**: portfolio-redis (Port 6382)
+- **Celery Worker**: portfolio-celery-worker
+- **Dependencies**: Equity Service, Fixed Income Service, Shared Redis
+- **Role**: 
+  - Main entry point for client applications
+  - Orchestrates interactions between equity and fixed income services
+  - Manages portfolio composition and calculations
+
+### 2. Equity Service
 - **Port**: 8001
 - **Database**: equity-postgres (Port 5432)
 - **Redis**: equity-redis (Port 6379)
 - **Celery Worker**: equity-celery-worker
 
-### 2. Fixed Income Service
+### 3. Fixed Income Service
 - **Port**: 8002
 - **Database**: fixed-income-postgres (Port 5433)
 - **Redis**: fixed-income-redis (Port 6380)
 - **Celery Worker**: fixed-income-celery-worker
 
-### 3. Shared Services
+### 4. Shared Services
 - **Shared Redis**: For inter-service communication (Port 6381)
 - **pgAdmin**: Database management (Port 8080)
-- **Redis Commander**: Redis management (Port 8081)
+- **Redis Commander**: Redis management (Port 8081)```
 
 ## Project Structure
 
-```
 financial-services/
-├── .env                           # Project environment variables
-├── docker-compose.yml             # Docker Compose configuration
-├── Makefile                       # Project management commands
-├── README.md                      # This file
-├── requirements.txt               # Python dependencies
+├── .env # Project environment variables
+├── docker-compose.yml # Docker Compose configuration
+├── Makefile # Project management commands
+├── README.md # This file
+├── requirements.txt # Python dependencies
 ├── scripts/
-│   ├── entrypoint.sh             # Service entrypoint script
-│   ├── init-equity-db.sql        # Equity database initialization
-│   └── init-fixed-income-db.sql  # Fixed Income database initialization
+│ ├── entrypoint.sh # Service entrypoint script
+│ ├── init-equity-db.sql # Equity database initialization
+│ ├── init-fixed-income-db.sql # Fixed Income database initialization
+│ └── init-portfolio-db.sql # Portfolio database initialization
 ├── equity_service/
-│   ├── config.py                 # Equity service configuration
-│   ├── Dockerfile                # Equity service Docker configuration
-│   ├── main.py                   # Equity service main application
-│   ├── requirements.txt          # Equity service dependencies
-│   └── logs/                     # Equity service logs
-└── fixed_income_service/
-    ├── config.py                 # Fixed Income service configuration
-    ├── Dockerfile                # Fixed Income service Docker configuration
-    ├── main.py                   # Fixed Income service main application
-    ├── requirements.txt          # Fixed Income service dependencies
-    └── logs/                     # Fixed Income service logs
-```
-
-## Quick Start
+│ ├── config.py # Equity service configuration
+│ ├── Dockerfile # Equity service Docker configuration
+│ ├── main.py # Equity service main application
+│ ├── requirements.txt # Equity service dependencies
+│ └── logs/ # Equity service logs
+├── fixed_income_service/
+│ ├── config.py # Fixed Income service configuration
+│ ├── Dockerfile # Fixed Income service Docker configuration
+│ ├── main.py # Fixed Income service main application
+│ ├── requirements.txt # Fixed Income service dependencies
+│ └── logs/ # Fixed Income service logs
+└── portfolio_service/
+├── config.py # Portfolio service configuration
+├── Dockerfile # Portfolio service Docker configuration
+├── main.py # Portfolio service main application
+├── requirements.txt # Portfolio service dependencies
+└── logs/ # Portfolio service logs## Quick Start
 
 ### Prerequisites
 - Docker and Docker Compose
@@ -107,7 +124,20 @@ make health
 make logs
 ```
 
+
 ## Service Endpoints
+
+### Portfolio Service (Primary Access Point)
+- **API**: http://localhost:8000
+- **Health Check**: http://localhost:8000/health
+- **Metrics**: http://localhost:8000/metrics
+- **Key Endpoints**:
+  - `POST /portfolios`: Create new portfolio
+  - `GET /portfolios/{id}`: Get portfolio details
+  - `POST /portfolios/{id}/calculate`: Calculate portfolio metrics
+  - `GET /portfolios/{id}/constituents`: Get portfolio constituents
+  - `POST /portfolios/{id}/rebalance`: Rebalance portfolio
+  - `GET /portfolios/{id}/performance`: Get performance metrics
 
 ### Equity Service
 - **API**: http://localhost:8001
@@ -119,6 +149,30 @@ make logs
 - **Health Check**: http://localhost:8002/health
 - **Metrics**: http://localhost:8002/metrics
 
+## Portfolio Service Features
+
+1. **Client-Facing Operations**:
+   - Single entry point for all portfolio-related operations
+   - Unified API for both equity and fixed income constituents
+   - Simplified client authentication and authorization
+
+2. **Portfolio Management**:
+   - Create and manage portfolios with mixed asset classes
+   - Weight allocation and rebalancing
+   - Constituent addition/removal
+
+3. **Calculations & Analytics**:
+   - Portfolio valuation aggregating equity and FI components
+   - Risk metrics calculation
+   - Performance attribution across asset classes
+   - Yield-to-maturity and duration calculations
+
+4. **Dependency Coordination**:
+   - Orchestrates calls to Equity and Fixed Income services
+   - Caches frequently accessed data from underlying services
+   - Manages consistency across services
+
+[Rest of the original content remains unchanged, maintaining all existing commands, configuration details, and other sections]
 ### Management Interfaces
 - **pgAdmin**: http://localhost:8080 (admin@example.com / admin)
 - **Redis Commander**: http://localhost:8081

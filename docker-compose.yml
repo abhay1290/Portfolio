@@ -7,8 +7,10 @@ networks:
 volumes:
   equity_postgres_data:
   fixed_income_postgres_data:
+  portfolio_postgres_data:
   equity_redis_data:
   fixed_income_redis_data:
+  portfolio_redis_data:
   shared_redis_data:
 
 services:
@@ -62,6 +64,29 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # Portfolio Database
+  portfolio-postgres:
+    image: postgres:15-alpine
+    container_name: portfolio-postgres
+    environment:
+      POSTGRES_DB: ${PORTFOLIO_DB_NAME}
+      POSTGRES_USER: ${PORTFOLIO_DB_USER}
+      POSTGRES_PASSWORD: ${PORTFOLIO_DB_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - portfolio_postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-portfolio-db.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5434:5432"
+    networks:
+      - financial_services_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${PORTFOLIO_DB_USER} -d ${PORTFOLIO_DB_NAME}" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
   # ======================
   # REDIS SERVICES
   # ======================
@@ -93,6 +118,24 @@ services:
       - fixed_income_redis_data:/data
     ports:
       - "6380:6379"
+    networks:
+      - financial_services_network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Portfolio Redis
+  portfolio-redis:
+    image: redis:7-alpine
+    container_name: portfolio-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - portfolio_redis_data:/data
+    ports:
+      - "6381:6379"
     networks:
       - financial_services_network
     healthcheck:
@@ -144,7 +187,7 @@ services:
       - EQUITY_API_PORT=8001
       - SHARED_REDIS_HOST=shared-redis
       - SHARED_REDIS_PORT=6379
-      - FIXED_INCOME_SERVICE_URL=http://fixed-income-service:8002
+      - PORTFOLIO_SERVICE_URL=http://portfolio-service:8000
       - DEBUG=${DEBUG}
       - LOG_LEVEL=${LOG_LEVEL}
     ports:
@@ -186,7 +229,7 @@ services:
       - FIXED_INCOME_API_PORT=8002
       - SHARED_REDIS_HOST=shared-redis
       - SHARED_REDIS_PORT=6379
-      - EQUITY_SERVICE_URL=http://equity-service:8001
+      - PORTFOLIO_SERVICE_URL=http://portfolio-service:8000
       - DEBUG=${DEBUG}
       - LOG_LEVEL=${LOG_LEVEL}
     ports:
@@ -208,9 +251,86 @@ services:
       start_period: 40s
     restart: unless-stopped
 
+  # Portfolio Service
+  portfolio-service:
+    build:
+      context: ./portfolio
+      dockerfile: Dockerfile
+    container_name: portfolio-service
+    environment:
+      - PORTFOLIO_DB_HOST=portfolio-postgres
+      - PORTFOLIO_DB_PORT=5432
+      - PORTFOLIO_DB_NAME=${PORTFOLIO_DB_NAME}
+      - PORTFOLIO_DB_USER=${PORTFOLIO_DB_USER}
+      - PORTFOLIO_DB_PASSWORD=${PORTFOLIO_DB_PASSWORD}
+      - PORTFOLIO_REDIS_HOST=portfolio-redis
+      - PORTFOLIO_REDIS_PORT=6379
+      - PORTFOLIO_CELERY_BROKER_URL=redis://portfolio-redis:6379/0
+      - PORTFOLIO_CELERY_RESULT_BACKEND=redis://portfolio-redis:6379/1
+      - PORTFOLIO_API_HOST=0.0.0.0
+      - PORTFOLIO_API_PORT=8000
+      - SHARED_REDIS_HOST=shared-redis
+      - SHARED_REDIS_PORT=6379
+      - EQUITY_SERVICE_URL=http://equity-service:8001
+      - FIXED_INCOME_SERVICE_URL=http://fixed-income-service:8002
+      - DEBUG=${DEBUG}
+      - LOG_LEVEL=${LOG_LEVEL}
+    ports:
+      - "8000:8000"
+    depends_on:
+      portfolio-postgres:
+        condition: service_healthy
+      portfolio-redis:
+        condition: service_healthy
+      equity-service:
+        condition: service_healthy
+      fixed-income-service:
+        condition: service_healthy
+    networks:
+      - financial_services_network
+    volumes:
+      - ./portfolio_service/logs:/app/logs
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
   # ======================
   # CELERY WORKERS
   # ======================
+
+  # Portfolio Celery Worker
+  portfolio-celery-worker:
+    build:
+      context: ./portfolio
+      dockerfile: Dockerfile
+    container_name: portfolio-celery-worker
+    command: celery -A tasks worker --loglevel=info --concurrency=4
+    environment:
+      - PORTFOLIO_DB_HOST=portfolio-postgres
+      - PORTFOLIO_DB_PORT=5432
+      - PORTFOLIO_DB_NAME=${PORTFOLIO_DB_NAME}
+      - PORTFOLIO_DB_USER=${PORTFOLIO_DB_USER}
+      - PORTFOLIO_DB_PASSWORD=${PORTFOLIO_DB_PASSWORD}
+      - PORTFOLIO_REDIS_HOST=portfolio-redis
+      - PORTFOLIO_REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://portfolio-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://portfolio-redis:6379/1
+      - DEBUG=${DEBUG}
+      - LOG_LEVEL=${LOG_LEVEL}
+    depends_on:
+      portfolio-postgres:
+        condition: service_healthy
+      portfolio-redis:
+        condition: service_healthy
+    networks:
+      - financial_services_network
+    volumes:
+      - ./portfolio_service/logs:/app/logs
+    restart: unless-stopped
 
   # Equity Celery Worker
   equity-celery-worker:
@@ -281,7 +401,7 @@ services:
     image: rediscommander/redis-commander:latest
     container_name: redis-commander
     environment:
-      - REDIS_HOSTS=equity:equity-redis:6379,fixed-income:fixed-income-redis:6379,shared:shared-redis:6379
+      - REDIS_HOSTS=equity:equity-redis:6379,fixed-income:fixed-income-redis:6379,shared:shared-redis:6379,portfolio:portfolio-redis:6379
     ports:
       - "8081:8081"
     networks:
@@ -289,6 +409,7 @@ services:
     depends_on:
       - equity-redis
       - fixed-income-redis
+      - portfolio-redis
       - shared-redis
     restart: unless-stopped
 
@@ -297,9 +418,8 @@ services:
     image: dpage/pgadmin4:latest
     container_name: pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@example.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
     ports:
       - "8080:80"
     networks:
@@ -309,4 +429,5 @@ services:
     depends_on:
       - equity-postgres
       - fixed-income-postgres
+      - portfolio-postgres
     restart: unless-stopped

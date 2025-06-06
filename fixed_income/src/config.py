@@ -43,16 +43,16 @@ class Settings:
     HEALTH_CHECK_ENDPOINT = "/health"
     METRICS_ENDPOINT = "/metrics"
 
-    # Cache Configuration
-    CACHE_TTL = int(os.getenv("FIXED_INCOME_CACHE_TTL", "300"))  # 5 minutes default
-
-    # Connection Pool Settings
-    DB_POOL_SIZE = int(os.getenv("FIXED_INCOME_DB_POOL_SIZE", "10"))
-    DB_MAX_OVERFLOW = int(os.getenv("FIXED_INCOME_DB_MAX_OVERFLOW", "20"))
-
-    # Rate Limiting
-    RATE_LIMIT_REQUESTS = int(os.getenv("FIXED_INCOME_RATE_LIMIT_REQUESTS", "100"))
-    RATE_LIMIT_WINDOW = int(os.getenv("FIXED_INCOME_RATE_LIMIT_WINDOW", "60"))
+    # # Cache Configuration
+    # CACHE_TTL = int(os.getenv("FIXED_INCOME_CACHE_TTL", "300"))  # 5 minutes default
+    #
+    # # Connection Pool Settings
+    # DB_POOL_SIZE = int(os.getenv("FIXED_INCOME_DB_POOL_SIZE", "10"))
+    # DB_MAX_OVERFLOW = int(os.getenv("FIXED_INCOME_DB_MAX_OVERFLOW", "20"))
+    #
+    # # Rate Limiting
+    # RATE_LIMIT_REQUESTS = int(os.getenv("FIXED_INCOME_RATE_LIMIT_REQUESTS", "100"))
+    # RATE_LIMIT_WINDOW = int(os.getenv("FIXED_INCOME_RATE_LIMIT_WINDOW", "60"))
 
     # Inter-service Communication
     SHARED_REDIS_HOST = os.getenv("SHARED_REDIS_HOST", "shared-redis")
