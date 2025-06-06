@@ -10,15 +10,24 @@ ENV PORTFOLIO_API_PORT=8000
 # Set work directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libpq-dev \
+# Install system dependencies (updated with libpq-dev)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        gcc \
+        python3-dev \
+        postgresql-client \
+        libpq-dev \
+        netcat-traditional \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first to leverage Docker cache
-COPY ./requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies with legacy resolver as fallback
+RUN pip install --no-cache-dir --upgrade pip \
+    && (pip install --no-cache-dir -r requirements.txt || \
+        pip install --no-cache-dir --use-deprecated=legacy-resolver -r requirements.txt)
 
 # Copy application code
 COPY . .
