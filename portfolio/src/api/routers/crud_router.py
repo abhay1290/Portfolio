@@ -21,7 +21,7 @@ logger.debug(f"ResponseSchemaType: {ResponseSchemaType}")
 db_dependency = Annotated[Session, Depends(get_db)]
 
 
-class GenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
+class PortfolioGenericRouter(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
     def __init__(
             self,
             model: Type[ModelType],

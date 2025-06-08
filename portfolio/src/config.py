@@ -10,7 +10,7 @@ class Settings:
     SERVICE_NAME = "Portfolio Service"
     VERSION = "1.0.0"
 
-    # Database Configuration
+    # Database Configuration(env var, defaults)
     DB_HOST = os.getenv("PORTFOLIO_DB_HOST", "localhost")
     DB_PORT = os.getenv("PORTFOLIO_DB_PORT", "4200")
     DB_NAME = os.getenv("PORTFOLIO_DB_NAME", "portfolio")
@@ -42,6 +42,16 @@ class Settings:
     HEALTH_CHECK_ENDPOINT = "/health"
     METRICS_ENDPOINT = "/metrics"
 
+    # Inter-service Communication
+    SHARED_REDIS_HOST = os.getenv("SHARED_REDIS_HOST", "shared-redis")
+    SHARED_REDIS_PORT = int(os.getenv("SHARED_REDIS_PORT", "6379"))
+    SHARED_REDIS_URL = f"redis://{SHARED_REDIS_HOST}:{SHARED_REDIS_PORT}"
+
+    # Portfolio Service URL (for inter-service calls)
+    EXTERNAL_SERVICE_TIMEOUT = "30"
+    EQUITY_SERVICE_URL = os.getenv("EQUITY_SERVICE_URL", "http://equity-service:8001")
+    FIXED_INCOME_SERVICE_URL = os.getenv("FIXED_INCOME_SERVICE_URL", "http://fixed-income-service:8002")
+
     # # Cache Configuration
     # CACHE_TTL = int(os.getenv("PORTFOLIO_CACHE_TTL", "300"))  # 5 minutes default
     #
@@ -52,16 +62,6 @@ class Settings:
     # # Rate Limiting
     # RATE_LIMIT_REQUESTS = int(os.getenv("PORTFOLIO_RATE_LIMIT_REQUESTS", "100"))
     # RATE_LIMIT_WINDOW = int(os.getenv("PORTFOLIO_RATE_LIMIT_WINDOW", "60"))
-
-    # Inter-service Communication
-    SHARED_REDIS_HOST = os.getenv("SHARED_REDIS_HOST", "shared-redis")
-    SHARED_REDIS_PORT = int(os.getenv("SHARED_REDIS_PORT", "6379"))
-    SHARED_REDIS_URL = f"redis://{SHARED_REDIS_HOST}:{SHARED_REDIS_PORT}"
-
-    # Portfolio Service URL (for inter-service calls)
-    EXTERNAL_SERVICE_TIMEOUT = "30"
-    EQUITY_SERVICE_URL = os.getenv("EQUITY_SERVICE_URL", "http://equity-service:8001")
-    FIXED_INCOME_SERVICE_URL = os.getenv("FIXED_INCOME_SERVICE_URL", "http://fixed-income-service:8002")
 
 
 # Instantiate the config

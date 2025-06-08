@@ -81,6 +81,8 @@ class PortfolioSummaryResponse(BaseModel):
     equity_count: int
     bond_count: int
     last_updated: Optional[datetime]
+    last_rebalance_date = Optional[datetime]
+    next_rebalance_date = Optional[datetime]
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -92,5 +94,23 @@ class PortfolioConstituentSummary(BaseModel):
     total_market_value: Optional[Decimal]
     total_weight: Optional[Decimal]
     last_updated: Optional[datetime]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PortfolioPerformanceResponse(BaseModel):
+    portfolio_id: str
+    symbol: str
+    inception_to_date_return: Optional[float] = None
+    year_to_date_return: Optional[float] = None
+    one_year_return: Optional[float] = None
+    three_year_annualized: Optional[float] = None
+    five_year_annualized: Optional[float] = None
+    volatility: Optional[float] = None
+    sharpe_ratio: Optional[float] = None
+    max_drawdown: Optional[float] = None
+    benchmark_symbol: str
+    benchmark_returns: Optional[float] = None
+    last_updated: datetime = datetime.now()
 
     model_config = ConfigDict(from_attributes=True)

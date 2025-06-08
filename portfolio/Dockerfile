@@ -1,6 +1,6 @@
 # Dockerfile
 # Use official Python image as base -> Porfolio_Service
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1

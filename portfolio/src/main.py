@@ -2,6 +2,7 @@ import logging
 
 from fastapi import Depends, FastAPI
 
+from portfolio.src.api.routers.router_setup import portfolio_router
 from portfolio.src.api.schemas.portfolio_schema import PortfolioRequest, PortfolioResponse
 from portfolio.src.config import settings
 from portfolio.src.services import portfolio_service
@@ -13,7 +14,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler("equity_service.log")
+        logging.FileHandler("portfolio_service.log")
     ]
 )
 logger = logging.getLogger(__name__)
@@ -39,6 +40,10 @@ async def health_check():
         "database_status": "connected",  # You would check DB connection
         "redis_status": "connected"  # And other dependencies
     }
+
+
+# Include routers
+app.include_router(portfolio_router)
 
 
 # In your FastAPI endpoint
