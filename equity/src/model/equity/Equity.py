@@ -17,7 +17,6 @@ from equity.src.model.enums.CurrencyEnum import CurrencyEnum
 from equity.src.model.equity.CorporateActionHistoryLog import CorporateActionHistoryLog
 from equity.src.utils.Decorators import audit_trail, transaction_rollback, validation_required
 from equity.src.utils.Exceptions import CorporateActionError, EquityValidationError
-from portfolio.src.model.Portfolio import portfolio_equity_association
 
 
 class Equity(Base):
@@ -69,13 +68,6 @@ class Equity(Base):
         "CorporateActionBase",
         back_populates="equity",
         cascade="all, delete-orphan"
-    )
-
-    portfolios = relationship(
-        "Portfolio",
-        secondary=portfolio_equity_association,
-        back_populates="equity",
-        lazy="dynamic"
     )
 
     def __repr__(self):
@@ -143,7 +135,7 @@ class Equity(Base):
     def _action_exists(session: Session, action_id: str) -> bool:
         """Check if action ID already exists"""
         return session.query(
-            exists().where(CorporateActionHistoryLog.action_id == action_id)
+            exists().where(action_id == CorporateActionHistoryLog.action_id)
         ).scalar()
 
     @transaction_rollback
@@ -231,9 +223,9 @@ class Equity(Base):
             raise ValueError("target_date must be a datetime object")
 
         log = session.query(CorporateActionHistoryLog).filter(
-            CorporateActionHistoryLog.equity_id == self.id,
+            self.id == CorporateActionHistoryLog.equity_id,
             CorporateActionHistoryLog.effective_date <= target_date,
-            CorporateActionHistoryLog.is_rolled_back == False
+            False == CorporateActionHistoryLog.is_rolled_back
         ).order_by(CorporateActionHistoryLog.effective_date.desc()).first()
 
         if log:

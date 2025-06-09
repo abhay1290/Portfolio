@@ -13,7 +13,7 @@ class Settings:
     # Database Configuration(env var, defaults)
     DB_HOST = os.getenv("PORTFOLIO_DB_HOST", "localhost")
     DB_PORT = os.getenv("PORTFOLIO_DB_PORT", "4200")
-    DB_NAME = os.getenv("PORTFOLIO_DB_NAME", "portfolio")
+    DB_NAME = os.getenv("PORTFOLIO_DB_NAME", "portfolio_db")
     DB_USER = os.getenv("PORTFOLIO_DB_USER", "postgres")
     DB_PASSWORD = os.getenv("PORTFOLIO_DB_PASSWORD", "HippO1290")
     DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
