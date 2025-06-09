@@ -1,12 +1,15 @@
-from datetime import datetime
-from typing import Any, Dict, Optional
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import Boolean, CheckConstraint, Column, Date, DateTime, Enum, ForeignKey, Index, Integer, NUMERIC, \
-    String, Table, Text, UniqueConstraint, func
+from QuantLib import Days, Months, Period, Weeks, Years
+from dateutil.relativedelta import relativedelta
+from sqlalchemy import Boolean, Column, Date, DateTime, Enum, Index, Integer, NUMERIC, \
+    String, Text, UniqueConstraint, func, or_, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
-from portfolio.src.database import Base
+from portfolio.src.database import Base, get_db
+from portfolio.src.model.Constituent import Constituent
 from portfolio.src.model.enums.AssetClassEnum import AssetClassEnum
 from portfolio.src.model.enums.BusinessDayConventionEnum import BusinessDayConventionEnum
 from portfolio.src.model.enums.CalenderEnum import CalendarEnum
@@ -16,50 +19,7 @@ from portfolio.src.model.enums.PortfolioTypeEnum import PortfolioTypeEnum
 from portfolio.src.model.enums.RebalanceFrequencyEnum import RebalanceFrequencyEnum
 from portfolio.src.model.enums.RiskLevelEnum import RiskLevelEnum
 from portfolio.src.model.enums.WeightingMethodologyEnum import WeightingMethodologyEnum
-
-# Association table for many-to-many relationship between Portfolio and Equity
-portfolio_equity_association = Table(
-    'portfolio_equity',
-    Base.metadata,
-    Column('portfolio_id', Integer, ForeignKey('portfolio.id'), primary_key=True),
-    Column('equity_id', Integer, ForeignKey('equity.id'), primary_key=True),
-    Column('currency', Enum(CurrencyEnum), nullable=False),
-    Column('weight', NUMERIC(precision=10, scale=6), nullable=False),
-    Column('target_weight', NUMERIC(precision=10, scale=6), nullable=True),
-    Column('units', NUMERIC(precision=20, scale=6), nullable=True),
-    Column('market_value', NUMERIC(precision=20, scale=2), nullable=True),
-    Column('added_at', DateTime(timezone=True), server_default=func.now()),
-    Column('last_rebalanced_at', DateTime(timezone=True), nullable=True),
-    Column('is_active', Boolean, default=True),
-    Index('idx_portfolio_equity_portfolio', 'portfolio_id'),
-    Index('idx_portfolio_equity_equity', 'equity_id'),
-    Index('idx_portfolio_equity_currency', 'currency'),
-    CheckConstraint('weight >= 0 AND weight <= 1', name='check_weight_range'),
-    CheckConstraint('target_weight IS NULL OR (target_weight >= 0 AND target_weight <= 1)',
-                    name='check_target_weight_range')
-)
-
-# Association table for many-to-many relationship between Portfolio and Bonds
-portfolio_bond_association = Table(
-    'portfolio_bond',
-    Base.metadata,
-    Column('portfolio_id', Integer, ForeignKey('portfolio.id'), primary_key=True),
-    Column('bond_id', Integer, ForeignKey('bonds.id'), primary_key=True),
-    Column('currency', Enum(CurrencyEnum), nullable=False),
-    Column('weight', NUMERIC(precision=10, scale=6), nullable=False),
-    Column('target_weight', NUMERIC(precision=10, scale=6), nullable=True),
-    Column('units', NUMERIC(precision=20, scale=6), nullable=True),
-    Column('market_value', NUMERIC(precision=20, scale=2), nullable=True),
-    Column('added_at', DateTime(timezone=True), server_default=func.now()),
-    Column('last_rebalanced_at', DateTime(timezone=True), nullable=True),
-    Column('is_active', Boolean, default=True),
-    Index('idx_portfolio_bond_portfolio', 'portfolio_id'),
-    Index('idx_portfolio_bond_bond', 'bond_id'),
-    Index('idx_portfolio_equity_currency', 'currency'),
-    CheckConstraint('weight >= 0 AND weight <= 1', name='check_bond_weight_range'),
-    CheckConstraint('target_weight IS NULL OR (target_weight >= 0 AND target_weight <= 1)',
-                    name='check_bond_target_weight_range')
-)
+from portfolio.src.utils.quantlib_mapper import from_ql_date, to_ql_business_day_convention, to_ql_calendar, to_ql_date
 
 
 class Portfolio(Base):
@@ -147,18 +107,11 @@ class Portfolio(Base):
     custodian = Column(String(200), nullable=True)
 
     # Relationships
-    equities = relationship(
-        "Equity",
-        secondary=portfolio_equity_association,
-        back_populates="portfolios",
-        lazy="dynamic"
-    )
-
-    bonds = relationship(
-        "BondBase",
-        secondary=portfolio_bond_association,
-        back_populates="portfolios",
-        lazy="dynamic"
+    constituents = relationship(
+        "Constituent",
+        back_populates="portfolio",
+        lazy="dynamic",
+        cascade="all, delete-orphan"
     )
 
     # Add these fields to your Portfolio class
@@ -180,103 +133,134 @@ class Portfolio(Base):
         return f"<Portfolio(id={self.id}, symbol='{self.symbol}', name='{self.name}')>"
 
     # Portfolio management methods
-    def add_equity_constituent(self, equity, weight: float, target_weight: Optional[float] = None,
-                               units: Optional[float] = None) -> bool:
-        """Add an equity constituent to the portfolio"""
+    def add_constituent(self, asset_id: int, asset_class: AssetClassEnum, currency: CurrencyEnum,
+                        weight: float, target_weight: Optional[float] = None,
+                        units: float = None, constituent: float = None) -> Constituent:
+        """Add a constituent to the portfolio"""
         if not self._validate_weight(weight):
             raise ValueError(f"Weight {weight} must be between 0 and 1")
 
         if target_weight and not self._validate_weight(target_weight):
             raise ValueError(f"Target weight {target_weight} must be between 0 and 1")
 
-        # Check if equity already exists in portfolio
-        existing = self._get_equity_association(equity.id)
-        if existing:
-            return self._update_equity_constituent(equity.id, weight, target_weight, units)
+        market_value = units * constituent.market_price
 
-        # Add new equity constituent
-        from sqlalchemy import insert
-        stmt = insert(portfolio_equity_association).values(
+        constituent = Constituent(
             portfolio_id=self.id,
-            equity_id=equity.id,
-            currency=equity.currency,
+            asset_id=asset_id,
+            asset_class=asset_class,
+            currency=currency,
             weight=weight,
             target_weight=target_weight,
             units=units,
-            market_value=units * equity.market_price if units and equity.market_price else None
+            market_value=market_value
         )
 
-        # Execute through session (this would need to be handled by calling code)
-        return True
+        return constituent
 
-    def add_bond_constituent(self, bond, weight: float, target_weight: Optional[float] = None,
-                             units: Optional[float] = None) -> bool:
-        """Add a bond constituent to the portfolio"""
-        if not self._validate_weight(weight):
-            raise ValueError(f"Weight {weight} must be between 0 and 1")
-
-        if target_weight and not self._validate_weight(target_weight):
-            raise ValueError(f"Target weight {target_weight} must be between 0 and 1")
-
-        # Check if bond already exists in portfolio
-        existing = self._get_bond_association(bond.id)
-        if existing:
-            return self._update_bond_constituent(bond.id, weight, target_weight, units)
-
-        # Add new bond constituent
-        from sqlalchemy import insert
-        stmt = insert(portfolio_bond_association).values(
+    def remove_constituent_by_constituent_id(self, session: get_db(), constituent_id: int) -> bool:
+        """Remove a constituent from the portfolio"""
+        constituent = session.query(Constituent).filter_by(
             portfolio_id=self.id,
-            bond_id=bond.id,
-            currency=bond.currency,
-            weight=weight,
-            target_weight=target_weight,
-            units=units,
-            market_value=units * bond.market_price if units and bond.market_price else None
-        )
+            id=constituent_id
+        ).first()
 
+        if not constituent:
+            return False
+
+        session.delete(constituent)
         return True
 
-    def remove_equity_constituent(self, equity_id: int) -> bool:
-        """Remove an equity constituent from the portfolio"""
-        from sqlalchemy import delete
-        stmt = delete(portfolio_equity_association).where(
-            self.id == portfolio_equity_association.c.portfolio_id,
-            equity_id == portfolio_equity_association.c.equity_id
-        )
+    def remove_constituent_by_asset_id_and_class(self, session: get_db(), asset_id: int,
+                                                 asset_class: AssetClassEnum) -> bool:
+        """Remove a constituent from the portfolio"""
+        constituent = session.query(Constituent).filter_by(
+            portfolio_id=self.id,
+            id=asset_id,
+            asset_class=asset_class
+        ).first()
+
+        if not constituent:
+            return False
+
+        session.delete(constituent)
         return True
 
-    def remove_bond_constituent(self, bond_id: int) -> bool:
-        """Remove a bond constituent from the portfolio"""
-        from sqlalchemy import delete
-        delete(portfolio_bond_association).where(
-            self.id == portfolio_bond_association.c.portfolio_id,
-            bond_id == portfolio_bond_association.c.bond_id
-        )
-        return True
+    def update_constituent(self, session: get_db(), constituent_id: int,
+                           weight: Optional[float] = None,
+                           target_weight: Optional[float] = None,
+                           units: Optional[float] = None,
+                           market_price: Optional[float] = None,
+                           is_active: Optional[bool] = None) -> bool:
+        """Update a constituent's properties"""
+        update_data = {}
 
-    def update_constituent_weight(self, constituent_id: int, constituent_type: str,
-                                  new_weight: float, new_target_weight: Optional[float] = None) -> bool:
-        """Update the weight of a constituent"""
-        if not self._validate_weight(new_weight):
-            raise ValueError(f"Weight {new_weight} must be between 0 and 1")
+        if weight is not None:
+            if not self._validate_weight(weight):
+                raise ValueError(f"Weight {weight} must be between 0 and 1")
+            update_data['weight'] = weight
 
-        if constituent_type.lower() == 'equity':
-            return self._update_equity_constituent(constituent_id, new_weight, new_target_weight)
-        elif constituent_type.lower() == 'bond':
-            return self._update_bond_constituent(constituent_id, new_weight, new_target_weight)
-        else:
-            raise ValueError(f"Invalid constituent type: {constituent_type}")
+        if target_weight is not None:
+            if not self._validate_weight(target_weight):
+                raise ValueError(f"Target weight {target_weight} must be between 0 and 1")
+            update_data['target_weight'] = target_weight
 
-    def get_total_weight(self) -> float:
+        if units is not None:
+            update_data['units'] = units
+
+        if market_price is not None and units is not None:
+            update_data['market_value'] = units * market_price
+
+        if is_active is not None:
+            update_data['is_active'] = is_active
+
+        if not update_data:
+            return False  # Nothing to update
+
+        update_data['last_rebalanced_at'] = func.now()
+
+        stmt = update(Constituent).where(
+            constituent_id == Constituent.id,
+            self.id == Constituent.portfolio_id
+        ).values(**update_data)
+
+        result = session.execute(stmt)
+        return result.rowcount > 0
+
+    def get_constituent(self, session: get_db(), constituent_id: int) -> Optional[Constituent]:
+        """Get a specific constituent by ID"""
+        return session.query(Constituent).filter_by(
+            portfolio_id=self.id,
+            id=constituent_id
+        ).first()
+
+    def get_constituents(self, session: get_db(),
+                         asset_class: Optional[AssetClassEnum] = None,
+                         active_only: bool = True) -> List[Constituent]:
+        """Get all constituents, optionally filtered by asset class and active status"""
+        query = session.query(Constituent).filter_by(portfolio_id=self.id)
+
+        if asset_class:
+            query = query.filter_by(asset_class=asset_class)
+
+        if active_only:
+            query = query.filter_by(is_active=True)
+
+        return query.all()
+
+    def get_total_weight(self, session: get_db(), active_only: bool = True) -> float:
         """Calculate total weight of all constituents"""
-        equity_weights = self._get_total_equity_weights()
-        bond_weights = self._get_total_bond_weights()
-        return equity_weights + bond_weights
+        query = session.query(func.sum(Constituent.weight)).filter_by(portfolio_id=self.id)
 
-    def validate_weights(self) -> Dict[str, Any]:
+        if active_only:
+            query = query.filter_by(is_active=True)
+
+        total = query.scalar()
+        return total if total else 0.0
+
+    def validate_weights(self, session: get_db()) -> Dict[str, Any]:
         """Validate that portfolio weights sum to approximately 1.0"""
-        total_weight = self.get_total_weight()
+        total_weight = self.get_total_weight(session)
         tolerance = 0.01  # 1% tolerance
 
         return {
@@ -286,13 +270,17 @@ class Portfolio(Base):
             'tolerance': tolerance
         }
 
-    def calculate_market_value(self) -> float:
+    def calculate_market_value(self, session: get_db(), active_only: bool = True) -> float:
         """Calculate total market value of portfolio"""
-        equity_value = self._calculate_equity_market_value()
-        bond_value = self._calculate_bond_market_value()
-        return equity_value + bond_value
+        query = session.query(func.sum(Constituent.market_value)).filter_by(portfolio_id=self.id)
 
-    def needs_rebalancing(self) -> bool:
+        if active_only:
+            query = query.filter_by(is_active=True)
+
+        total = query.scalar()
+        return total if total else 0.0
+
+    def needs_rebalancing(self, session: get_db()) -> bool:
         """Check if portfolio needs rebalancing based on target weights and thresholds"""
         if not self.auto_rebalance_enabled:
             return False
@@ -302,87 +290,132 @@ class Portfolio(Base):
             return True
 
         # Check if any constituent has drifted beyond tolerance
-        return self._check_drift_tolerance()
+        return self._check_drift_tolerance(session)
 
-    def get_constituent_summary(self) -> Dict[str, Any]:
+    def get_constituent_summary(self, session: get_db()) -> Dict[str, Any]:
         """Get summary of all constituents"""
+        equity_count = session.query(Constituent).filter_by(
+            portfolio_id=self.id,
+            asset_class=AssetClassEnum.EQUITY,
+            is_active=True
+        ).count()
+
+        fixed_income_count = session.query(Constituent).filter_by(
+            portfolio_id=self.id,
+            asset_class=AssetClassEnum.FIXED_INCOME,
+            is_active=True
+        ).count()
+
         return {
-            'equity_count': self.equities.count(),
-            'bond_count': self.bonds.count(),
-            'total_constituents': self.equities.count() + self.bonds.count(),
-            'total_market_value': self.calculate_market_value(),
-            'total_weight': self.get_total_weight(),
+            'equity_count': equity_count,
+            'fixed_income_count': fixed_income_count,
+            'total_constituents': equity_count + fixed_income_count,
+            'total_market_value': self.calculate_market_value(session),
+            'total_weight': self.get_total_weight(session),
             'last_updated': self.updated_at
         }
 
-    # Private helper methods
+    def rebalance_portfolio(self, session: get_db()) -> bool:
+        """Rebalance the portfolio to target weights"""
+        if not self.auto_rebalance_enabled:
+            return False
+
+        # Get all active constituents with target weights
+        constituents = session.query(Constituent).filter(
+            Constituent.portfolio_id == self.id,
+            Constituent.is_active == True,
+            Constituent.target_weight.isnot(None)
+        ).all()
+
+        if not constituents:
+            return False
+
+        # Update weights to match target weights
+        for constituent in constituents:
+            constituent.weight = constituent.target_weight
+            constituent.last_rebalanced_at = func.now()
+
+        # Update portfolio rebalance dates
+        self.last_rebalance_date = func.now()
+
+        # Calculate next rebalance date based on frequency
+        self._calculate_next_rebalance_date()
+
+        return True
+
+        # Private helper methods
+
     @staticmethod
     def _validate_weight(weight: float) -> bool:
         """Validate weight is between 0 and 1"""
         return 0 <= weight <= 1
 
-    def _get_equity_association(self, equity_id: int):
-        """Get equity association record"""
-        # This would need session access to query the association table
-        pass
+    def get_equity_constituents(self):
+        """Get all equity constituents"""
+        return self.constituents.filter_by(asset_class=AssetClassEnum.EQUITY)
 
-    def _get_bond_association(self, bond_id: int):
-        """Get bond association record"""
-        # This would need session access to query the association table
-        pass
+    def get_fixed_income_constituents(self):
+        """Get all fixed income constituents"""
+        return self.constituents.filter_by(asset_class=AssetClassEnum.FIXED_INCOME)
 
-    def _update_equity_constituent(self, equity_id: int, weight: float,
-                                   target_weight: Optional[float] = None, units: Optional[float] = None) -> bool:
-        """Update existing equity constituent"""
-        from sqlalchemy import update
-        update(portfolio_equity_association).where(
-            self.id == portfolio_equity_association.c.portfolio_id,
-            equity_id == portfolio_equity_association.c.equity_id
-        ).values(
-            weight=weight,
-            target_weight=target_weight,
-            units=units,
-            last_rebalanced_at=func.now()
-        )
-        return True
-
-    def _update_bond_constituent(self, bond_id: int, weight: float,
-                                 target_weight: Optional[float] = None, units: Optional[float] = None) -> bool:
-        """Update existing bond constituent"""
-        from sqlalchemy import update
-        update(portfolio_bond_association).where(
-            self.id == portfolio_bond_association.c.portfolio_id,
-            bond_id == portfolio_bond_association.c.bond_id
-        ).values(
-            weight=weight,
-            target_weight=target_weight,
-            units=units,
-            last_rebalanced_at=func.now()
-        )
-        return True
-
-    def _get_total_equity_weights(self) -> float:
-        """Calculate total weight of equity constituents"""
-        # This would need session access to sum weights
-        return 0.0
-
-    def _get_total_bond_weights(self) -> float:
-        """Calculate total weight of bond constituents"""
-        # This would need session access to sum weights
-        return 0.0
-
-    def _calculate_equity_market_value(self) -> float:
-        """Calculate total market value of equity holdings"""
-        # This would need session access to calculate
-        return 0.0
-
-    def _calculate_bond_market_value(self) -> float:
-        """Calculate total market value of bond holdings"""
-        # This would need session access to calculate
-        return 0.0
-
-    def _check_drift_tolerance(self) -> bool:
+    def _check_drift_tolerance(self, session: get_db()) -> bool:
         """Check if any constituent has drifted beyond acceptable tolerance"""
-        # This would implement logic to check if current weights vs target weights
-        # exceed the drift tolerance threshold
-        return False
+        tolerance = 0.05  # 5% drift tolerance
+
+        drifted_constituents = session.query(Constituent).filter(
+            Constituent.portfolio_id == self.id,
+            Constituent.is_active == True,
+            Constituent.target_weight.isnot(None),
+            or_(
+                Constituent.weight - Constituent.target_weight > tolerance,
+                Constituent.target_weight - Constituent.weight > tolerance
+            )
+        ).exists()
+
+        return session.query(drifted_constituents).scalar()
+
+    def _calculate_next_rebalance_date(self):
+        """Calculate next rebalance date based on frequency"""
+        if not self.rebalance_frequency or not self.last_rebalance_date:
+            return
+        try:
+
+            last_rebalance = to_ql_date(self.last_rebalance_date)
+            calendar = to_ql_calendar(self.calendar)
+            convention = to_ql_business_day_convention(self.business_day_convention)
+
+            # Determine the period based on rebalance frequency
+            if self.rebalance_frequency == RebalanceFrequencyEnum.DAILY:
+                period = Period(1, Days)
+            elif self.rebalance_frequency == RebalanceFrequencyEnum.WEEKLY:
+                period = Period(1, Weeks)
+            elif self.rebalance_frequency == RebalanceFrequencyEnum.MONTHLY:
+                period = Period(1, Months)
+            elif self.rebalance_frequency == RebalanceFrequencyEnum.QUARTERLY:
+                period = Period(3, Months)
+            elif self.rebalance_frequency == RebalanceFrequencyEnum.ANNUALLY:
+                period = Period(1, Years)
+            else:
+                return
+
+            # Calculate the adjusted date
+            next_date = calendar.advance(last_rebalance, period, convention)
+
+            # Convert back to Python date
+            self.next_rebalance_date = from_ql_date(next_date)
+
+        except ValueError as e:
+            # Fallback to simple date arithmetic if mapping fails
+            import warnings
+            warnings.warn(f"QuantLib calendar/conversion failed: {str(e)}. Using simple date arithmetic.")
+
+            if self.rebalance_frequency == RebalanceFrequencyEnum.DAILY:
+                self.next_rebalance_date = self.last_rebalance_date + timedelta(days=1)
+            elif self.rebalance_frequency == RebalanceFrequencyEnum.WEEKLY:
+                self.next_rebalance_date = self.last_rebalance_date + timedelta(weeks=1)
+            elif self.rebalance_frequency == RebalanceFrequencyEnum.MONTHLY:
+                self.next_rebalance_date = self.last_rebalance_date + relativedelta(months=1)
+            elif self.rebalance_frequency == RebalanceFrequencyEnum.QUARTERLY:
+                self.next_rebalance_date = self.last_rebalance_date + relativedelta(months=3)
+            elif self.rebalance_frequency == RebalanceFrequencyEnum.ANNUALLY:
+                self.next_rebalance_date = self.last_rebalance_date + relativedelta(years=1)
