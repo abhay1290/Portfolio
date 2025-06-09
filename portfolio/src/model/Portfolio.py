@@ -114,6 +114,9 @@ class Portfolio(Base):
         cascade="all, delete-orphan"
     )
 
+    def __repr__(self):
+        return f"<Portfolio(id={self.id}, symbol='{self.symbol}', name='{self.name}', version={self.version})>"
+
     # Add these fields to your Portfolio class
     # geographic_focus = Column(Enum(GeographicFocusEnum), nullable=True)
     # sector_focus = Column(Enum(SectorFocusEnum), nullable=True, default=SectorFocusEnum.DIVERSIFIED)
@@ -128,9 +131,6 @@ class Portfolio(Base):
 
     # Performance tracking relationship (if you have a performance table)
     # performance_history = relationship("PortfolioPerformance", back_populates="portfolio")
-
-    def __repr__(self):
-        return f"<Portfolio(id={self.id}, symbol='{self.symbol}', name='{self.name}')>"
 
     # Portfolio management methods
     def add_constituent(self, asset_id: int, asset_class: AssetClassEnum, currency: CurrencyEnum,
@@ -419,3 +419,210 @@ class Portfolio(Base):
                 self.next_rebalance_date = self.last_rebalance_date + relativedelta(months=3)
             elif self.rebalance_frequency == RebalanceFrequencyEnum.ANNUALLY:
                 self.next_rebalance_date = self.last_rebalance_date + relativedelta(years=1)
+
+    # ========== VERSIONING METHODS ==========
+
+    def get_versions(self, session: get_db()) -> List['PortfolioVersion']:
+        """Get all versions of this portfolio"""
+        VersionClass = self.get_version_class()
+        return session.query(VersionClass).filter(
+            VersionClass.id == self.id
+        ).order_by(VersionClass.transaction_id).all()
+
+    def get_version_at_date(self, session: get_db(), target_date: datetime) -> Optional['PortfolioVersion']:
+        """Get the version that was active at a specific date"""
+        VersionClass = self.get_version_class()
+        return session.query(VersionClass).filter(
+            VersionClass.id == self.id,
+            VersionClass.transaction.has(
+                func.date(VersionClass.transaction.issued_at) <= target_date.date()
+            )
+        ).order_by(desc(VersionClass.transaction_id)).first()
+
+    def get_version_by_number(self, session: get_db(), version_number: int) -> Optional['PortfolioVersion']:
+        """Get a specific version by version number"""
+        VersionClass = self.get_version_class()
+        return session.query(VersionClass).filter(
+            VersionClass.id == self.id,
+            VersionClass.version == version_number
+        ).first()
+
+    def rollback_to_version(self, session: get_db(), target_version: int,
+                            change_reason: str = None, approved_by: str = None) -> bool:
+        """
+        Rollback to a specific version and create a new version with the old state.
+        This preserves the audit trail.
+        """
+        try:
+            # Get the target version
+            target_version_obj = self.get_version_by_number(session, target_version)
+            if not target_version_obj:
+                raise ValueError(f"Version {target_version} not found")
+
+            # Store current version for potential recovery
+            current_state = self._create_state_snapshot()
+
+            # Apply the target version's state to current object
+            self._apply_version_state(target_version_obj)
+
+            # Update versioning metadata
+            self.version += 1
+            self.change_reason = change_reason or f"Rollback to version {target_version}"
+            self.approved_by = approved_by
+            self.updated_at = func.now()
+
+            # Generate new version hash
+            self.version_hash = self._generate_version_hash()
+
+            session.flush()  # This will create a new version automatically
+            return True
+
+        except Exception as e:
+            session.rollback()
+            raise Exception(f"Rollback failed: {str(e)}")
+
+    def rollback_and_replay(self, session: get_db(), exclude_version: int,
+                            change_reason: str = None, approved_by: str = None) -> bool:
+        """
+        Advanced rollback: Rollback to before a specific version, then replay all
+        subsequent versions except the excluded one.
+        """
+        try:
+            versions = self.get_versions(session)
+            if not versions:
+                return False
+
+            # Find the excluded version and get all versions after it
+            exclude_index = None
+            for i, version in enumerate(versions):
+                if version.version == exclude_version:
+                    exclude_index = i
+                    break
+
+            if exclude_index is None:
+                raise ValueError(f"Version {exclude_version} not found")
+
+            # Get the version just before the excluded one
+            if exclude_index == 0:
+                # If excluding the first version, start from initial state
+                baseline_version = None
+            else:
+                baseline_version = versions[exclude_index - 1]
+
+            # Rollback to baseline
+            if baseline_version:
+                self._apply_version_state(baseline_version)
+            else:
+                self._reset_to_initial_state()
+
+            # Replay all versions after the excluded one
+            versions_to_replay = versions[exclude_index + 1:]
+            for replay_version in versions_to_replay:
+                self._apply_version_changes(replay_version)
+
+            # Update metadata
+            self.version += 1
+            self.change_reason = change_reason or f"Rollback excluding version {exclude_version}"
+            self.approved_by = approved_by
+            self.updated_at = func.now()
+            self.version_hash = self._generate_version_hash()
+
+            session.flush()
+            return True
+
+        except Exception as e:
+            session.rollback()
+            raise Exception(f"Rollback and replay failed: {str(e)}")
+
+    def get_version_diff(self, session: get_db(), version1: int, version2: int) -> Dict[str, Any]:
+        """Compare two versions and return the differences"""
+        v1 = self.get_version_by_number(session, version1)
+        v2 = self.get_version_by_number(session, version2)
+
+        if not v1 or not v2:
+            raise ValueError("One or both versions not found")
+
+        diff = {
+            'version1': version1,
+            'version2': version2,
+            'changes': {},
+            'timestamp1': v1.transaction.issued_at if hasattr(v1, 'transaction') else None,
+            'timestamp2': v2.transaction.issued_at if hasattr(v2, 'transaction') else None,
+        }
+
+        # Compare all versioned columns
+        for column in self.__table__.columns:
+            if column.name not in self.__versioned__.get('exclude', []):
+                val1 = getattr(v1, column.name, None)
+                val2 = getattr(v2, column.name, None)
+
+                if val1 != val2:
+                    diff['changes'][column.name] = {
+                        'from': val1,
+                        'to': val2
+                    }
+
+        return diff
+
+    def get_version_timeline(self, session: get_db()) -> List[Dict[str, Any]]:
+        """Get a timeline of all changes with metadata"""
+        versions = self.get_versions(session)
+        timeline = []
+
+        for version in versions:
+            timeline.append({
+                'version': version.version,
+                'timestamp': version.transaction.issued_at if hasattr(version, 'transaction') else None,
+                'change_reason': getattr(version, 'change_reason', None),
+                'approved_by': getattr(version, 'approved_by', None),
+                'version_hash': getattr(version, 'version_hash', None),
+                'operation_type': getattr(version, 'operation_type', None),
+            })
+
+        return timeline
+
+    def _apply_version_state(self, version_obj):
+        """Apply a version's state to the current object"""
+        for column in self.__table__.columns:
+            if column.name not in ['id', 'created_at', 'updated_at']:
+                if hasattr(version_obj, column.name):
+                    setattr(self, column.name, getattr(version_obj, column.name))
+
+    def _apply_version_changes(self, version_obj):
+        """Apply incremental changes from a version"""
+        # This would contain logic to apply only the changed fields
+        # For now, we'll apply the full state
+        self._apply_version_state(version_obj)
+
+    def _create_state_snapshot(self) -> Dict[str, Any]:
+        """Create a snapshot of current state for backup purposes"""
+        snapshot = {}
+        for column in self.__table__.columns:
+            snapshot[column.name] = getattr(self, column.name)
+        return snapshot
+
+    def _reset_to_initial_state(self):
+        """Reset object to initial state (for replay scenarios)"""
+        # This would reset to the state at creation
+        # Implementation depends on your business logic
+        pass
+
+    def _generate_version_hash(self):
+        """Generate a hash representing the current state"""
+        import hashlib
+        import json
+
+        state_dict = {}
+        for column in self.__table__.columns:
+            value = getattr(self, column.name)
+            # Convert non-serializable types
+            if hasattr(value, 'isoformat'):  # datetime objects
+                value = value.isoformat()
+            elif hasattr(value, '__dict__'):  # enum objects
+                value = str(value)
+            state_dict[column.name] = value
+
+        state_json = json.dumps(state_dict, sort_keys=True, default=str)
+        return hashlib.sha256(state_json.encode()).hexdigest()
+
+    configure_mappers()
