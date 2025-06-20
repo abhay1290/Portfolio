@@ -1,7 +1,7 @@
 import logging
 from typing import List, Optional
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi import Body, Depends, FastAPI, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordBearer
 
 from portfolio.src.api.schemas.constituent_schema import (
@@ -9,18 +9,19 @@ from portfolio.src.api.schemas.constituent_schema import (
 )
 from portfolio.src.api.schemas.portfolio_schema import (
     PortfolioPerformanceResponse, PortfolioRequest,
-    PortfolioResponse, PortfolioSummaryResponse
+    PortfolioResponse, PortfolioSummaryResponse, PortfolioVersionResponse
 )
-from portfolio.src.model.PortfolioVersion import PortfolioVersion
 from portfolio.src.services.portfolio_service import PortfolioService, create_portfolio_service
 
 logger = logging.getLogger(__name__)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-portfolio_router = APIRouter(
-    prefix="/portfolios",
-    tags=["portfolios"],
-    responses={404: {"description": "Not found"}},
+portfolio_router = FastAPI(
+    title="Portfolio Service",
+    version="1.0.0",
+    description="Microservice for portfolio management",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc"
 )
 
 
@@ -323,7 +324,7 @@ async def get_portfolio_performance(
 
 # Version Management Endpoints
 
-@portfolio_router.get("/{portfolio_id}/versions", response_model=List[PortfolioVersion])
+@portfolio_router.get("/{portfolio_id}/versions", response_model=List[PortfolioVersionResponse])
 async def get_version_history(
         portfolio_id: int,
         limit: Optional[int] = Query(None, ge=1, le=100, description="Maximum number of versions to return"),
@@ -355,7 +356,7 @@ async def get_version_history(
         )
 
 
-@portfolio_router.get("/{portfolio_id}/versions/{version_id}", response_model=PortfolioVersion)
+@portfolio_router.get("/{portfolio_id}/versions/{version_id}", response_model=PortfolioVersionResponse)
 async def get_specific_version(
         portfolio_id: int,
         version_id: int,
@@ -371,7 +372,7 @@ async def get_specific_version(
     return await portfolio_service.get_specific_version(portfolio_id, version_id)
 
 
-@portfolio_router.get("/{portfolio_id}/versions/latest", response_model=PortfolioVersion)
+@portfolio_router.get("/{portfolio_id}/versions/latest", response_model=PortfolioVersionResponse)
 async def get_latest_version(
         portfolio_id: int,
         token: str = Depends(oauth2_scheme),

@@ -45,7 +45,7 @@ class Portfolio(Base):
 
     # Portfolio classification
     portfolio_type = Column(Enum(PortfolioTypeEnum), nullable=False)
-    base_currency = Column(Enum(CurrencyEnum), nullable=False)
+    currency = Column(Enum(CurrencyEnum), nullable=False)
     asset_class = Column(Enum(AssetClassEnum), nullable=False)
 
     # Portfolio methodology and strategy
