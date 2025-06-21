@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 from equity.src.model.equity.EquityPrice import EquityPrice  # Assuming this model exists
 
 from equity.src.api.equity_schema.Equity_Schema import EquityPriceRequest, EquityPriceResponse
-from equity.src.database.generic_database_excess import GenericDatabaseService
+from equity.src.database.equity_database_service import EquityDatabaseService
 from equity.src.services.equity_read_service import get_equity_read_service
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ class EquityPriceReadOnlyService:
     """
 
     def __init__(self):
-        self.db_service = GenericDatabaseService(
+        self.db_service = EquityDatabaseService(
             model=EquityPrice,
             create_schema=EquityPriceRequest,
             response_schema=EquityPriceResponse

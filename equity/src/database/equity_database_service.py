@@ -28,7 +28,7 @@ class DatabaseError(Exception):
         super().__init__(self.message)
 
 
-class GenericDatabaseService(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
+class EquityDatabaseService(Generic[ModelType, CreateSchemaType, ResponseSchemaType]):
     """
     Generic Database Service Layer
 

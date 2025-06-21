@@ -3,7 +3,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from equity.src.api.equity_schema.Equity_Schema import EquityRequest, EquityResponse
-from equity.src.database.generic_database_excess import GenericDatabaseService
+from equity.src.database.equity_database_service import EquityDatabaseService
 from equity.src.model.enums.CurrencyEnum import CurrencyEnum
 from equity.src.model.equity.Equity import Equity
 
@@ -20,7 +20,7 @@ class EquityReadOnlyService:
     """
 
     def __init__(self):
-        self.db_service = GenericDatabaseService(
+        self.db_service = EquityDatabaseService(
             model=Equity,
             create_schema=EquityRequest,  # Required for type consistency
             response_schema=EquityResponse
