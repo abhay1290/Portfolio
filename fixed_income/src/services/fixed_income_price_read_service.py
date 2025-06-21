@@ -6,6 +6,7 @@ from fixed_income.src.api.bond_schema.BondPriceSchema import BondPriceRequest, B
 from fixed_income.src.model.bonds.BondPrice import BondPrice  # Assuming this model exists
 
 from fixed_income.src.database.generic_database_service import GenericDatabaseService
+from fixed_income.src.model.enums import BondTypeEnum
 from fixed_income.src.services.fixed_income_read_service import get_bond_read_service
 
 logger = logging.getLogger(__name__)
@@ -31,13 +32,13 @@ class BondPriceReadOnlyService:
 
     # === Current Price Operations ===
 
-    async def get_current_price(self, bond_id: int, bond_type: str) -> Optional[BondPriceResponse]:
+    async def get_current_price(self, bond_id: int, bond_type: BondTypeEnum) -> Optional[BondPriceResponse]:
         """
         Get the most recent price for a single bond.
         """
         try:
             # Future: Check cache first
-            # cached = await self.price_cache.get(f"current_price:{bond_type}:{bond_id}")
+            # cached = await self.price_cache.get(f"current_price:{bond_type.value}:{bond_id}")
             # if cached: return BondPriceResponse.parse_raw(cached)
 
             # Get latest price from database
@@ -47,7 +48,7 @@ class BondPriceReadOnlyService:
             )
 
             # Filter by bond_type and get most recent
-            bond_type_prices = [p for p in prices if p.bond_type == bond_type]
+            bond_type_prices = [p for p in prices if p.bond_type == bond_type.value]
             if bond_type_prices:
                 # Sort by timestamp to get most recent
                 current_price = max(bond_type_prices, key=lambda x: x.timestamp)
@@ -56,14 +57,15 @@ class BondPriceReadOnlyService:
 
             # Future: Cache the result with short TTL
             # if current_price:
-            #     await self.price_cache.setex(f"current_price:{bond_type}:{bond_id}", 30, current_price.json())
+            #     await self.price_cache.setex(f"current_price:{bond_type.value}:{bond_id}", 30, current_price.json())
 
             return current_price
         except Exception as e:
-            logger.error(f"Error getting current price for {bond_type} bond {bond_id}: {str(e)}")
+            logger.error(f"Error getting current price for {bond_type.value} bond {bond_id}: {str(e)}")
             return None
 
-    async def get_current_prices_bulk(self, bond_ids: List[int], bond_type: str) -> Dict[int, BondPriceResponse]:
+    async def get_current_prices_bulk(self, bond_ids: List[int], bond_type: BondTypeEnum) -> Dict[
+        int, BondPriceResponse]:
         """
         Get current prices for multiple bonds efficiently.
         """
@@ -78,10 +80,11 @@ class BondPriceReadOnlyService:
 
             return current_prices
         except Exception as e:
-            logger.error(f"Error in bulk current price retrieval for {bond_type}: {str(e)}")
+            logger.error(f"Error in bulk current price retrieval for {bond_type.value}: {str(e)}")
             return {}
 
-    async def get_current_prices_by_symbols(self, symbols: List[str], bond_type: str) -> Dict[str, BondPriceResponse]:
+    async def get_current_prices_by_symbols(self, symbols: List[str], bond_type: BondTypeEnum) -> Dict[
+        str, BondPriceResponse]:
         """
         Get current prices by bond symbols.
         """
@@ -100,7 +103,7 @@ class BondPriceReadOnlyService:
 
             return result
         except Exception as e:
-            logger.error(f"Error getting current prices by symbols for {bond_type}: {str(e)}")
+            logger.error(f"Error getting current prices by symbols for {bond_type.value}: {str(e)}")
             return {}
 
     # === Historical Price Operations ===
@@ -108,7 +111,7 @@ class BondPriceReadOnlyService:
     async def get_price_history(
             self,
             bond_id: int,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             start_date: datetime.datetime = None,
             end_date: datetime.datetime = None,
             limit: int = 100
@@ -123,7 +126,7 @@ class BondPriceReadOnlyService:
             # Filter by bond type and date range
             filtered_prices = []
             for price in all_prices:
-                if price.bond_type != bond_type:
+                if price.bond_type != bond_type.value:
                     continue
 
                 if start_date and price.timestamp < start_date:
@@ -139,13 +142,13 @@ class BondPriceReadOnlyService:
             return filtered_prices[:limit]
 
         except Exception as e:
-            logger.error(f"Error getting price history for {bond_type} bond {bond_id}: {str(e)}")
+            logger.error(f"Error getting price history for {bond_type.value} bond {bond_id}: {str(e)}")
             return []
 
     async def get_price_at_date(
             self,
             bond_id: int,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             target_date: datetime.datetime
     ) -> Optional[BondPriceResponse]:
         """
@@ -162,13 +165,13 @@ class BondPriceReadOnlyService:
 
             return prices[0] if prices else None
         except Exception as e:
-            logger.error(f"Error getting price at date for {bond_type} bond {bond_id}: {str(e)}")
+            logger.error(f"Error getting price at date for {bond_type.value} bond {bond_id}: {str(e)}")
             return None
 
     async def get_price_range(
             self,
             bond_id: int,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             days: int = 30
     ) -> Dict[str, Any]:
         """
@@ -190,7 +193,7 @@ class BondPriceReadOnlyService:
 
             return {
                 "bond_id": bond_id,
-                "bond_type": bond_type,
+                "bond_type": bond_type.value,
                 "period_days": days,
                 "high": max(price_values),
                 "low": min(price_values),
@@ -201,13 +204,13 @@ class BondPriceReadOnlyService:
                 "end_date": datetime.datetime.now().isoformat()
             }
         except Exception as e:
-            logger.error(f"Error calculating price range for {bond_type} bond {bond_id}: {str(e)}")
+            logger.error(f"Error calculating price range for {bond_type.value} bond {bond_id}: {str(e)}")
             return {}
 
     async def get_price_performance(
             self,
             bond_id: int,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             periods: List[int]
     ) -> Dict[str, Any]:
         """
@@ -220,7 +223,7 @@ class BondPriceReadOnlyService:
 
             performance = {
                 "bond_id": bond_id,
-                "bond_type": bond_type,
+                "bond_type": bond_type.value,
                 "current_price": float(current_price.price),
                 "currency": current_price.currency,
                 "periods": {}
@@ -243,13 +246,13 @@ class BondPriceReadOnlyService:
 
             return performance
         except Exception as e:
-            logger.error(f"Error calculating price performance for {bond_type} bond {bond_id}: {str(e)}")
+            logger.error(f"Error calculating price performance for {bond_type.value} bond {bond_id}: {str(e)}")
             return {}
 
     async def compare_bond_prices(
             self,
             bond_ids: List[int],
-            bond_type: str,
+            bond_type: BondTypeEnum,
             start_date: datetime.datetime = None
     ) -> Dict[str, Any]:
         """
@@ -284,13 +287,13 @@ class BondPriceReadOnlyService:
                     }
 
             return {
-                "bond_type": bond_type,
+                "bond_type": bond_type.value,
                 "comparison_date": start_date.isoformat(),
                 "current_date": datetime.datetime.now().isoformat(),
                 "bonds": comparison_data
             }
         except Exception as e:
-            logger.error(f"Error comparing {bond_type} bond prices: {str(e)}")
+            logger.error(f"Error comparing {bond_type.value} bond prices: {str(e)}")
             return {}
 
     # === Market Data Validation ===
@@ -298,7 +301,7 @@ class BondPriceReadOnlyService:
     async def validate_price_data_quality(
             self,
             bond_id: int,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             days: int = 7
     ) -> Dict[str, Any]:
         """
@@ -313,7 +316,7 @@ class BondPriceReadOnlyService:
             )
 
             if not prices:
-                return {"status": "no_data", "bond_id": bond_id, "bond_type": bond_type}
+                return {"status": "no_data", "bond_id": bond_id, "bond_type": bond_type.value}
 
             # Analyze data quality
             price_values = [float(price.price) for price in prices]
@@ -345,7 +348,7 @@ class BondPriceReadOnlyService:
 
             return {
                 "bond_id": bond_id,
-                "bond_type": bond_type,
+                "bond_type": bond_type.value,
                 "period_days": days,
                 "total_data_points": len(prices),
                 "data_gaps": gaps,
@@ -353,14 +356,14 @@ class BondPriceReadOnlyService:
                 "analysis_date": datetime.datetime.now().isoformat()
             }
         except Exception as e:
-            logger.error(f"Error validating price data quality for {bond_type} bond {bond_id}: {str(e)}")
-            return {"status": "error", "bond_id": bond_id, "bond_type": bond_type, "error": str(e)}
+            logger.error(f"Error validating price data quality for {bond_type.value} bond {bond_id}: {str(e)}")
+            return {"status": "error", "bond_id": bond_id, "bond_type": bond_type.value, "error": str(e)}
 
     # === Statistics and Aggregations ===
 
     async def get_bond_market_summary(
             self,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             bond_ids: List[int] = None,
             issuer: str = None
     ) -> Dict[str, Any]:
@@ -396,7 +399,7 @@ class BondPriceReadOnlyService:
             unchanged = len(performance_data) - gainers - losers
 
             return {
-                "bond_type": bond_type,
+                "bond_type": bond_type.value,
                 "total_bonds": len(bond_ids),
                 "prices_available": len(current_prices),
                 "issuer": issuer,
@@ -420,21 +423,21 @@ class BondPriceReadOnlyService:
                 "generated_at": datetime.datetime.now().isoformat()
             }
         except Exception as e:
-            logger.error(f"Error generating {bond_type} bond market summary: {str(e)}")
+            logger.error(f"Error generating {bond_type.value} bond market summary: {str(e)}")
             return {}
 
     # === Future Cache Management ===
 
-    # async def invalidate_price_cache(self, bond_id: int, bond_type: str):
+    # async def invalidate_price_cache(self, bond_id: int, bond_type: BondTypeEnum):
     #     """Invalidate price cache for specific bond"""
-    #     await self.price_cache.delete(f"current_price:{bond_type}:{bond_id}")
-    #     await self.price_cache.delete_pattern(f"price_history:{bond_type}:{bond_id}:*")
+    #     await self.price_cache.delete(f"current_price:{bond_type.value}:{bond_id}")
+    #     await self.price_cache.delete_pattern(f"price_history:{bond_type.value}:{bond_id}:*")
 
-    # async def warm_price_cache(self, bond_ids: List[int], bond_type: str):
+    # async def warm_price_cache(self, bond_ids: List[int], bond_type: BondTypeEnum):
     #     """Pre-warm cache with current prices"""
     #     current_prices = await self.get_current_prices_bulk(bond_ids, bond_type)
     #     for bond_id, price in current_prices.items():
-    #         await self.price_cache.setex(f"current_price:{bond_type}:{bond_id}", 30, price.json())
+    #         await self.price_cache.setex(f"current_price:{bond_type.value}:{bond_id}", 30, price.json())
 
 
 # Factory function

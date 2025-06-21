@@ -12,15 +12,9 @@ from fixed_income.src.api.bond_schema.BondPriceSchema import (
 from pydantic import BaseModel
 
 # Import all bond schemas using your existing imports
-from fixed_income.src.api.bond_schema.CallableBondSchema import CallableBondRequest, CallableBondResponse
-from fixed_income.src.api.bond_schema.FixedRateBondSchema import FixedRateBondRequest, FixedRateBondResponse
-from fixed_income.src.api.bond_schema.FloatingRateBondSchema import FloatingRateBondRequest, FloatingRateBondResponse
-from fixed_income.src.api.bond_schema.PutableBondSchema import PutableBondRequest, PutableBondResponse
-from fixed_income.src.api.bond_schema.SinkingFundBondSchema import SinkingFundBondRequest, SinkingFundBondResponse
-from fixed_income.src.api.bond_schema.ZeroCouponBondSchema import ZeroCouponBondRequest, ZeroCouponBondResponse
 from fixed_income.src.controller.fixed_income_controller import FixedIncomeController, get_fixed_income_controller
-from fixed_income.src.model.bonds import CallableBondModel, FixedRateBondModel, FloatingRateBondModel, PutableBondModel, \
-    SinkingFundBondModel, ZeroCouponBondModel
+from fixed_income.src.model.enums import BondTypeEnum
+from fixed_income.src.utils.model_mappers import bond_model_factory, bond_schema_factory
 
 logger = logging.getLogger(__name__)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -35,78 +29,24 @@ fixed_income_router = FastAPI(
 )
 
 
-# === Factory Functions (using your existing implementation) ===
-def bond_schema_factory(bond_type: str):
-    """Factory function to get the appropriate schema classes for a bond type"""
-    schema_mapping = {
-        'FIXED_COUPON': {
-            'request': FixedRateBondRequest,
-            'response': FixedRateBondResponse
-        },
-        'ZERO_COUPON': {
-            'request': ZeroCouponBondRequest,
-            'response': ZeroCouponBondResponse
-        },
-        'CALLABLE': {
-            'request': CallableBondRequest,
-            'response': CallableBondResponse
-        },
-        'PUTABLE': {
-            'request': PutableBondRequest,
-            'response': PutableBondResponse
-        },
-        'FLOATING': {
-            'request': FloatingRateBondRequest,
-            'response': FloatingRateBondResponse
-        },
-        'SINKING_FUND': {
-            'request': SinkingFundBondRequest,
-            'response': SinkingFundBondResponse
-        }
-    }
-
-    if bond_type not in schema_mapping:
-        raise ValueError(f"Unsupported bond_type: {bond_type}")
-
-    return schema_mapping[bond_type]
-
-
-def bond_model_factory(bond_type: str):
-    """Factory function to get the appropriate bond model class"""
-    mapping = {
-        'FIXED_COUPON': FixedRateBondModel,
-        'ZERO_COUPON': ZeroCouponBondModel,
-        'CALLABLE': CallableBondModel,
-        'PUTABLE': PutableBondModel,
-        'FLOATING': FloatingRateBondModel,
-        'SINKING_FUND': SinkingFundBondModel
-    }
-    try:
-        return mapping[bond_type]
-    except KeyError:
-        raise ValueError(f"Unsupported bond_type: {bond_type}")
-
-
 # === Helper Functions ===
-SUPPORTED_BOND_TYPES = ['FIXED_COUPON', 'ZERO_COUPON', 'CALLABLE', 'PUTABLE', 'FLOATING', 'SINKING_FUND']
 
-
-def validate_bond_type(bond_type: str) -> str:
-    """Validate and return bond type"""
+def validate_bond_type(bond_type: str) -> BondTypeEnum:
+    """Validate and return bond type enum"""
     bond_type_upper = bond_type.upper()
-    if bond_type_upper not in SUPPORTED_BOND_TYPES:
+    try:
+        return BondTypeEnum(bond_type_upper)
+    except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported bond type: {bond_type}. Supported types: {SUPPORTED_BOND_TYPES}"
+            detail=f"Unsupported bond type: {bond_type}. Supported types: {[e.value for e in BondTypeEnum]}"
         )
-    return bond_type_upper
 
 
-def get_bond_schemas(bond_type: str) -> Dict[str, Type[BaseModel]]:
+def get_bond_schemas(bond_type: BondTypeEnum) -> Dict[str, Type[BaseModel]]:
     """Get request and response schemas for a bond type using factory"""
-    bond_type = validate_bond_type(bond_type)
     try:
-        return bond_schema_factory(bond_type)
+        return bond_schema_factory(bond_type.value)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -114,21 +54,20 @@ def get_bond_schemas(bond_type: str) -> Dict[str, Type[BaseModel]]:
         )
 
 
-def get_request_schema(bond_type: str) -> Type[BaseModel]:
+def get_request_schema(bond_type: BondTypeEnum) -> Type[BaseModel]:
     """Get request schema for a bond type"""
     return get_bond_schemas(bond_type)["request"]
 
 
-def get_response_schema(bond_type: str) -> Type[BaseModel]:
+def get_response_schema(bond_type: BondTypeEnum) -> Type[BaseModel]:
     """Get response schema for a bond type"""
     return get_bond_schemas(bond_type)["response"]
 
 
-def get_bond_model(bond_type: str):
+def get_bond_model(bond_type: BondTypeEnum):
     """Get bond model class for a bond type"""
-    bond_type = validate_bond_type(bond_type)
     try:
-        return bond_model_factory(bond_type)
+        return bond_model_factory(bond_type.value)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -143,7 +82,7 @@ async def get_supported_bond_types(
         token: str = Depends(oauth2_scheme)
 ):
     """Get list of supported bond types."""
-    return SUPPORTED_BOND_TYPES
+    return [bond_type.value for bond_type in BondTypeEnum]
 
 
 @fixed_income_router.get("/bond-types/summary", response_model=Dict[str, Any])
@@ -161,16 +100,16 @@ async def get_bond_type_schema(
         token: str = Depends(oauth2_scheme)
 ):
     """Get schema information for a specific bond type."""
-    bond_type = validate_bond_type(bond_type)
-    schemas = get_bond_schemas(bond_type)
-    model_class = get_bond_model(bond_type)
+    bond_type_enum = validate_bond_type(bond_type)
+    schemas = get_bond_schemas(bond_type_enum)
+    model_class = get_bond_model(bond_type_enum)
 
     return {
-        "bond_type": bond_type,
+        "bond_type": bond_type_enum.value,
         "request_schema": schemas["request"].model_json_schema(),
         "response_schema": schemas["response"].model_json_schema(),
         "model_class": model_class.__name__,
-        "schema_title": f"{bond_type} Bond Schema"
+        "schema_title": f"{bond_type_enum.value} Bond Schema"
     }
 
 
@@ -180,11 +119,11 @@ async def get_bond_type_model_info(
         token: str = Depends(oauth2_scheme)
 ):
     """Get model information for a specific bond type."""
-    bond_type = validate_bond_type(bond_type)
-    model_class = get_bond_model(bond_type)
+    bond_type_enum = validate_bond_type(bond_type)
+    model_class = get_bond_model(bond_type_enum)
 
     return {
-        "bond_type": bond_type,
+        "bond_type": bond_type_enum.value,
         "model_class": model_class.__name__,
         "model_module": model_class.__module__,
         "model_fields": list(model_class.__annotations__.keys()) if hasattr(model_class, '__annotations__') else [],
@@ -201,10 +140,10 @@ async def create_bond_dynamic(
         token: str = Depends(oauth2_scheme)
 ):
     """Create a new bond instrument of specified type with dynamic schema validation."""
-    bond_type = validate_bond_type(bond_type)
+    bond_type_enum = validate_bond_type(bond_type)
 
     # Get the appropriate schema and validate the request
-    request_schema = get_request_schema(bond_type)
+    request_schema = get_request_schema(bond_type_enum)
 
     try:
         # Validate request data against the appropriate schema
@@ -212,12 +151,12 @@ async def create_bond_dynamic(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Invalid {bond_type} bond data: {str(e)}"
+            detail=f"Invalid {bond_type_enum.value} bond data: {str(e)}"
         )
 
     result = await controller.create_bond(
         bond_data=validated_request,
-        bond_type=bond_type,
+        bond_type=bond_type_enum,
         user_token=token
     )
 
@@ -232,13 +171,13 @@ async def get_bond_dynamic(
         token: str = Depends(oauth2_scheme)
 ):
     """Get a single bond instrument by ID and type with dynamic response schema."""
-    bond_type = validate_bond_type(bond_type)
+    bond_type_enum = validate_bond_type(bond_type)
 
-    bond = await controller.get_bond_by_id(bond_id, bond_type)
+    bond = await controller.get_bond_by_id(bond_id, bond_type_enum)
     if not bond:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"{bond_type} bond {bond_id} not found"
+            detail=f"{bond_type_enum.value} bond {bond_id} not found"
         )
 
     return bond
@@ -252,13 +191,13 @@ async def get_bond_by_symbol_dynamic(
         token: str = Depends(oauth2_scheme)
 ):
     """Get bond instrument by symbol and type with dynamic response schema."""
-    bond_type = validate_bond_type(bond_type)
+    bond_type_enum = validate_bond_type(bond_type)
 
-    bond = await controller.get_bond_by_symbol(symbol, bond_type)
+    bond = await controller.get_bond_by_symbol(symbol, bond_type_enum)
     if not bond:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"{bond_type} bond with symbol {symbol} not found"
+            detail=f"{bond_type_enum.value} bond with symbol {symbol} not found"
         )
 
     return bond
@@ -273,10 +212,10 @@ async def update_bond_dynamic(
         token: str = Depends(oauth2_scheme)
 ):
     """Update an existing bond instrument with dynamic schema validation."""
-    bond_type = validate_bond_type(bond_type)
+    bond_type_enum = validate_bond_type(bond_type)
 
     # Get the appropriate schema and validate the request
-    request_schema = get_request_schema(bond_type)
+    request_schema = get_request_schema(bond_type_enum)
 
     try:
         # Validate request data against the appropriate schema
@@ -284,13 +223,13 @@ async def update_bond_dynamic(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Invalid {bond_type} bond data: {str(e)}"
+            detail=f"Invalid {bond_type_enum.value} bond data: {str(e)}"
         )
 
     return await controller.update_bond(
         bond_id=bond_id,
         bond_data=validated_request,
-        bond_type=bond_type,
+        bond_type=bond_type_enum,
         user_token=token
     )
 
@@ -304,7 +243,7 @@ async def partial_update_bond_dynamic(
         token: str = Depends(oauth2_scheme)
 ):
     """Partially update an existing bond instrument with dynamic schema validation."""
-    bond_type = validate_bond_type(bond_type)
+    bond_type_enum = validate_bond_type(bond_type)
 
     # For partial updates, we validate only the provided fields
     # You might want to create a custom partial validation function
@@ -312,7 +251,7 @@ async def partial_update_bond_dynamic(
     return await controller.partial_update_bond(
         bond_id=bond_id,
         bond_data=request,  # Pass raw dict for partial updates
-        bond_type=bond_type,
+        bond_type=bond_type_enum,
         user_token=token
     )
 
@@ -325,17 +264,17 @@ async def delete_bond_dynamic(
         token: str = Depends(oauth2_scheme)
 ):
     """Delete a bond instrument with dynamic type validation."""
-    bond_type = validate_bond_type(bond_type)
+    bond_type_enum = validate_bond_type(bond_type)
 
     success = await controller.delete_bond(
         bond_id=bond_id,
-        bond_type=bond_type,
+        bond_type=bond_type_enum,
         user_token=token
     )
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"{bond_type} bond {bond_id} not found"
+            detail=f"{bond_type_enum.value} bond {bond_id} not found"
         )
 
 
@@ -348,10 +287,10 @@ async def bulk_create_bonds_dynamic(
         token: str = Depends(oauth2_scheme)
 ):
     """Create multiple bond instruments in bulk for a specific type with dynamic schema validation."""
-    bond_type = validate_bond_type(bond_type)
+    bond_type_enum = validate_bond_type(bond_type)
 
     # Get the appropriate schema and validate all requests
-    request_schema = get_request_schema(bond_type)
+    request_schema = get_request_schema(bond_type_enum)
     validated_requests = []
 
     for i, bond_data in enumerate(bulk_request):
@@ -361,12 +300,12 @@ async def bulk_create_bonds_dynamic(
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Invalid {bond_type} bond data at index {i}: {str(e)}"
+                detail=f"Invalid {bond_type_enum.value} bond data at index {i}: {str(e)}"
             )
 
     return await controller.bulk_create_bonds(
         bulk_request=validated_requests,
-        bond_type=bond_type,
+        bond_type=bond_type_enum,
         user_token=token
     )
 
@@ -387,19 +326,19 @@ async def bulk_create_mixed_bonds_dynamic(
                 detail=f"Missing bond_type or bond_data at index {i}"
             )
 
-        bond_type = validate_bond_type(bond_request["bond_type"])
+        bond_type_enum = validate_bond_type(bond_request["bond_type"])
         bond_data = bond_request["bond_data"]
 
         # Get the appropriate schema and validate
-        request_schema = get_request_schema(bond_type)
+        request_schema = get_request_schema(bond_type_enum)
 
         try:
             validated_request = request_schema(**bond_data)
-            validated_requests.append((bond_type, validated_request))
+            validated_requests.append((bond_type_enum, validated_request))
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Invalid {bond_type} bond data at index {i}: {str(e)}"
+                detail=f"Invalid {bond_type_enum.value} bond data at index {i}: {str(e)}"
             )
 
     return await controller.bulk_create_mixed_bonds(validated_requests, token)
@@ -413,8 +352,8 @@ async def bulk_get_bonds_dynamic(
         token: str = Depends(oauth2_scheme)
 ):
     """Get multiple bond instruments by IDs for a specific type."""
-    bond_type = validate_bond_type(bond_type)
-    return await controller.get_bonds_bulk(bond_ids, bond_type)
+    bond_type_enum = validate_bond_type(bond_type)
+    return await controller.get_bonds_bulk(bond_ids, bond_type_enum)
 
 
 @fixed_income_router.post("/{bond_type}/bonds/bulk/get-by-symbols")
@@ -425,8 +364,8 @@ async def bulk_get_bonds_by_symbols_dynamic(
         token: str = Depends(oauth2_scheme)
 ):
     """Get multiple bond instruments by symbols for a specific type."""
-    bond_type = validate_bond_type(bond_type)
-    return await controller.get_bonds_by_symbols_bulk(symbols, bond_type)
+    bond_type_enum = validate_bond_type(bond_type)
+    return await controller.get_bonds_by_symbols_bulk(symbols, bond_type_enum)
 
 
 # === Bond Listing and Search ===
@@ -444,18 +383,18 @@ async def get_bonds_dynamic(
         end_date: Optional[datetime] = Query(None, description="Maturity end date filter")
 ):
     """Get list of bond instruments with optional filtering for a specific type."""
-    bond_type = validate_bond_type(bond_type)
+    bond_type_enum = validate_bond_type(bond_type)
 
     if issuer:
-        return await controller.get_bonds_by_issuer(issuer, bond_type)
+        return await controller.get_bonds_by_issuer(issuer, bond_type_enum)
     elif currency:
-        return await controller.get_bonds_by_currency(currency, bond_type)
+        return await controller.get_bonds_by_currency(currency, bond_type_enum)
     elif start_date and end_date:
-        return await controller.get_bonds_by_maturity_range(start_date, end_date, bond_type)
+        return await controller.get_bonds_by_maturity_range(start_date, end_date, bond_type_enum)
     elif active_only:
-        return await controller.get_active_bonds(bond_type)
+        return await controller.get_active_bonds(bond_type_enum)
     else:
-        return await controller.get_all_bonds(bond_type, order_by, desc)
+        return await controller.get_all_bonds(bond_type_enum, order_by, desc)
 
 
 @fixed_income_router.get("/{bond_type}/bonds/search/{search_term}")
@@ -466,8 +405,8 @@ async def search_bonds_dynamic(
         token: str = Depends(oauth2_scheme)
 ):
     """Search bond instruments across multiple fields for a specific type."""
-    bond_type = validate_bond_type(bond_type)
-    return await controller.search_bonds(search_term, bond_type)
+    bond_type_enum = validate_bond_type(bond_type)
+    return await controller.search_bonds(search_term, bond_type_enum)
 
 
 # === Bond Validation ===
@@ -479,8 +418,8 @@ async def validate_bonds_exist_dynamic(
         token: str = Depends(oauth2_scheme)
 ):
     """Validate that multiple bonds exist for a specific type."""
-    bond_type = validate_bond_type(bond_type)
-    return await controller.validate_bonds_exist(bond_ids, bond_type)
+    bond_type_enum = validate_bond_type(bond_type)
+    return await controller.validate_bonds_exist(bond_ids, bond_type_enum)
 
 
 @fixed_income_router.get("/{bond_type}/bonds/validate/{bond_id}/exists")
@@ -491,11 +430,11 @@ async def validate_bond_exists_dynamic(
         token: str = Depends(oauth2_scheme)
 ):
     """Validate that a single bond exists for a specific type."""
-    bond_type = validate_bond_type(bond_type)
-    exists = await controller.validate_bond_exists(bond_id, bond_type)
+    bond_type_enum = validate_bond_type(bond_type)
+    exists = await controller.validate_bond_exists(bond_id, bond_type_enum)
     return {
         "bond_id": bond_id,
-        "bond_type": bond_type,
+        "bond_type": bond_type_enum.value,
         "exists": exists,
         "validated_at": datetime.now().isoformat()
     }
@@ -510,13 +449,13 @@ async def get_current_price_dynamic(
         token: str = Depends(oauth2_scheme)
 ):
     """Get current price for a specific bond."""
-    bond_type = validate_bond_type(bond_type)
+    bond_type_enum = validate_bond_type(bond_type)
 
-    price = await controller.get_current_price(bond_id, bond_type)
+    price = await controller.get_current_price(bond_id, bond_type_enum)
     if not price:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No current price available for {bond_type} bond {bond_id}"
+            detail=f"No current price available for {bond_type_enum.value} bond {bond_id}"
         )
     return price
 
@@ -533,11 +472,11 @@ async def update_price_dynamic(
         token: str = Depends(oauth2_scheme)
 ):
     """Update price for a specific bond."""
-    bond_type = validate_bond_type(bond_type)
+    bond_type_enum = validate_bond_type(bond_type)
 
     return await controller.update_price(
         bond_id=bond_id,
-        bond_type=bond_type,
+        bond_type=bond_type_enum,
         price=price,
         timestamp=timestamp,
         source=source,
@@ -550,22 +489,22 @@ async def update_price_dynamic(
 def create_typed_endpoints():
     """Create type-specific endpoints with proper schemas for better API documentation"""
 
-    for bond_type in SUPPORTED_BOND_TYPES:
+    for bond_type in BondTypeEnum:
         try:
-            schemas = bond_schema_factory(bond_type)
+            schemas = bond_schema_factory(bond_type.value)
             request_schema = schemas["request"]
             response_schema = schemas["response"]
-            model_class = bond_model_factory(bond_type)
+            model_class = bond_model_factory(bond_type.value)
 
             # Create a route tag for this bond type
-            tag_name = f"{bond_type.lower().replace('_', '-')}-typed"
+            tag_name = f"{bond_type.value.lower().replace('_', '-')}-typed"
 
             # Create typed endpoint for bond creation
             async def create_typed_bond(
                     request_data: request_schema,
                     controller: FixedIncomeController = Depends(get_fixed_income_controller),
                     token: str = Depends(oauth2_scheme),
-                    _bond_type: str = bond_type  # Capture in closure
+                    _bond_type: BondTypeEnum = bond_type  # Capture in closure
             ):
                 return await controller.create_bond(
                     bond_data=request_data,
@@ -575,14 +514,14 @@ def create_typed_endpoints():
 
             # Register the typed endpoint
             fixed_income_router.add_api_route(
-                path=f"/typed/{bond_type.lower()}/bonds",
+                path=f"/typed/{bond_type.value.lower()}/bonds",
                 endpoint=create_typed_bond,
                 methods=["POST"],
                 response_model=response_schema,
                 status_code=status.HTTP_201_CREATED,
                 tags=[tag_name],
-                summary=f"Create {bond_type} Bond (Typed)",
-                description=f"Create a new {bond_type} bond with strongly typed schema validation"
+                summary=f"Create {bond_type.value} Bond (Typed)",
+                description=f"Create a new {bond_type.value} bond with strongly typed schema validation"
             )
 
             # Create typed endpoint for bond retrieval
@@ -590,29 +529,29 @@ def create_typed_endpoints():
                     bond_id: int,
                     controller: FixedIncomeController = Depends(get_fixed_income_controller),
                     token: str = Depends(oauth2_scheme),
-                    _bond_type: str = bond_type  # Capture in closure
+                    _bond_type: BondTypeEnum = bond_type  # Capture in closure
             ):
                 bond = await controller.get_bond_by_id(bond_id, _bond_type)
                 if not bond:
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
-                        detail=f"{_bond_type} bond {bond_id} not found"
+                        detail=f"{_bond_type.value} bond {bond_id} not found"
                     )
                 return bond
 
             # Register the typed retrieval endpoint
             fixed_income_router.add_api_route(
-                path=f"/typed/{bond_type.lower()}/bonds/{{bond_id}}",
+                path=f"/typed/{bond_type.value.lower()}/bonds/{{bond_id}}",
                 endpoint=get_typed_bond,
                 methods=["GET"],
                 response_model=response_schema,
                 tags=[tag_name],
-                summary=f"Get {bond_type} Bond (Typed)",
-                description=f"Retrieve a {bond_type} bond by ID with strongly typed response"
+                summary=f"Get {bond_type.value} Bond (Typed)",
+                description=f"Retrieve a {bond_type.value} bond by ID with strongly typed response"
             )
 
         except Exception as e:
-            logger.error(f"Failed to create typed endpoints for {bond_type}: {str(e)}")
+            logger.error(f"Failed to create typed endpoints for {bond_type.value}: {str(e)}")
 
 
 # Initialize typed endpoints
@@ -629,11 +568,11 @@ async def health_check(
 
     # Add schema registry health information
     schema_registry_status = {}
-    for bond_type in SUPPORTED_BOND_TYPES:
+    for bond_type in BondTypeEnum:
         try:
-            schemas = bond_schema_factory(bond_type)
-            model = bond_model_factory(bond_type)
-            schema_registry_status[bond_type] = {
+            schemas = bond_schema_factory(bond_type.value)
+            model = bond_model_factory(bond_type.value)
+            schema_registry_status[bond_type.value] = {
                 "schemas_loaded": True,
                 "model_loaded": True,
                 "request_schema": schemas["request"].__name__,
@@ -641,14 +580,14 @@ async def health_check(
                 "model_class": model.__name__
             }
         except Exception as e:
-            schema_registry_status[bond_type] = {
+            schema_registry_status[bond_type.value] = {
                 "schemas_loaded": False,
                 "model_loaded": False,
                 "error": str(e)
             }
 
     health_result.update({
-        "supported_bond_types": SUPPORTED_BOND_TYPES,
+        "supported_bond_types": [bond_type.value for bond_type in BondTypeEnum],
         "schema_registry_status": schema_registry_status,
         "factory_functions": {
             "bond_schema_factory": "active",

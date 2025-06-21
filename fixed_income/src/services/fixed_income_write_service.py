@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 
 from fixed_income.src.database.bond_database_service import BondDatabaseService
 from fixed_income.src.model.bonds.BondBase import BondBase
+from fixed_income.src.model.enums import BondTypeEnum
 from fixed_income.src.services.fixed_income_read_service import BondReadOnlyService, get_bond_read_service
 from fixed_income.src.utils.model_mappers import bond_model_factory, bond_schema_factory
 
@@ -24,11 +25,11 @@ class BondWriteService:
         self._db_services = {}  # Cache for database services by bond type
         self.read_service: BondReadOnlyService = get_bond_read_service()
 
-    def _get_db_service(self, bond_type: str) -> BondDatabaseService:
+    def _get_db_service(self, bond_type: BondTypeEnum) -> BondDatabaseService:
         """Get or create database service for specific bond type"""
         if bond_type not in self._db_services:
-            model_class = bond_model_factory(bond_type)
-            schemas = bond_schema_factory(bond_type)
+            model_class = bond_model_factory(bond_type.value)
+            schemas = bond_schema_factory(bond_type.value)
 
             self._db_services[bond_type] = BondDatabaseService(
                 bond_base_model=BondBase,
@@ -45,7 +46,7 @@ class BondWriteService:
     async def create_bond(
             self,
             bond_data: Any,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             user_token: str = None
     ) -> Any:
         """
@@ -57,7 +58,7 @@ class BondWriteService:
                 if not await self.read_service.validate_symbol_unique(bond_data.symbol, bond_type):
                     raise HTTPException(
                         status_code=status.HTTP_409_CONFLICT,
-                        detail=f"{bond_type} bond with symbol {bond_data.symbol} already exists"
+                        detail=f"{bond_type.value} bond with symbol {bond_data.symbol} already exists"
                     )
 
             # Create bond
@@ -69,23 +70,23 @@ class BondWriteService:
             # if hasattr(bond_response, 'symbol') and bond_response.symbol:
             #     await self.read_service.invalidate_symbol_cache(bond_response.symbol, bond_type)
 
-            logger.info(f"Created {bond_type} bond with ID {bond_response.id}")
+            logger.info(f"Created {bond_type.value} bond with ID {bond_response.id}")
             return bond_response
 
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error creating {bond_type} bond: {str(e)}")
+            logger.error(f"Unexpected error creating {bond_type.value} bond: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to create {bond_type} bond instrument"
+                detail=f"Failed to create {bond_type.value} bond instrument"
             )
 
     async def update_bond(
             self,
             bond_id: int,
             bond_data: Any,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             user_token: str = None
     ) -> Any:
         """
@@ -97,7 +98,7 @@ class BondWriteService:
             if not existing_bond:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"{bond_type} bond with ID {bond_id} not found"
+                    detail=f"{bond_type.value} bond with ID {bond_id} not found"
                 )
 
             # Validate symbol uniqueness if changing
@@ -106,7 +107,7 @@ class BondWriteService:
                 if not await self.read_service.validate_symbol_unique(bond_data.symbol, bond_type, exclude_id=bond_id):
                     raise HTTPException(
                         status_code=status.HTTP_409_CONFLICT,
-                        detail=f"{bond_type} bond with symbol {bond_data.symbol} already exists"
+                        detail=f"{bond_type.value} bond with symbol {bond_data.symbol} already exists"
                     )
 
             # Update bond
@@ -121,23 +122,23 @@ class BondWriteService:
             #     bond_data.symbol != existing_bond.symbol):
             #     await self.read_service.invalidate_symbol_cache(bond_data.symbol, bond_type)
 
-            logger.info(f"Updated {bond_type} bond {bond_id}")
+            logger.info(f"Updated {bond_type.value} bond {bond_id}")
             return updated_bond
 
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error updating {bond_type} bond {bond_id}: {str(e)}")
+            logger.error(f"Unexpected error updating {bond_type.value} bond {bond_id}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to update {bond_type} bond"
+                detail=f"Failed to update {bond_type.value} bond"
             )
 
     async def partial_update_bond(
             self,
             bond_id: int,
             bond_data: Any,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             user_token: str = None
     ) -> Any:
         """
@@ -149,7 +150,7 @@ class BondWriteService:
             if not existing_bond:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"{bond_type} bond with ID {bond_id} not found"
+                    detail=f"{bond_type.value} bond with ID {bond_id} not found"
                 )
 
             # Validate symbol uniqueness if changing
@@ -158,7 +159,7 @@ class BondWriteService:
                 if not await self.read_service.validate_symbol_unique(bond_data.symbol, bond_type, exclude_id=bond_id):
                     raise HTTPException(
                         status_code=status.HTTP_409_CONFLICT,
-                        detail=f"{bond_type} bond with symbol {bond_data.symbol} already exists"
+                        detail=f"{bond_type.value} bond with symbol {bond_data.symbol} already exists"
                     )
 
             # Partial update
@@ -170,22 +171,22 @@ class BondWriteService:
             # if hasattr(existing_bond, 'symbol') and existing_bond.symbol:
             #     await self.read_service.invalidate_symbol_cache(existing_bond.symbol, bond_type)
 
-            logger.info(f"Partially updated {bond_type} bond {bond_id}")
+            logger.info(f"Partially updated {bond_type.value} bond {bond_id}")
             return updated_bond
 
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error partially updating {bond_type} bond {bond_id}: {str(e)}")
+            logger.error(f"Unexpected error partially updating {bond_type.value} bond {bond_id}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to partially update {bond_type} bond"
+                detail=f"Failed to partially update {bond_type.value} bond"
             )
 
     async def delete_bond(
             self,
             bond_id: int,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             user_token: str = None
     ) -> bool:
         """
@@ -197,7 +198,7 @@ class BondWriteService:
             if not existing_bond:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"{bond_type} bond with ID {bond_id} not found"
+                    detail=f"{bond_type.value} bond with ID {bond_id} not found"
                 )
 
             # Delete bond
@@ -210,17 +211,17 @@ class BondWriteService:
                 # if hasattr(existing_bond, 'symbol') and existing_bond.symbol:
                 #     await self.read_service.invalidate_symbol_cache(existing_bond.symbol, bond_type)
 
-                logger.info(f"Deleted {bond_type} bond {bond_id}")
+                logger.info(f"Deleted {bond_type.value} bond {bond_id}")
 
             return success
 
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Error deleting {bond_type} bond {bond_id}: {str(e)}")
+            logger.error(f"Error deleting {bond_type.value} bond {bond_id}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to delete {bond_type} bond"
+                detail=f"Failed to delete {bond_type.value} bond"
             )
 
     # === Bulk Write Operations ===
@@ -228,7 +229,7 @@ class BondWriteService:
     async def bulk_create_bonds(
             self,
             bulk_request: List[Any],
-            bond_type: str,
+            bond_type: BondTypeEnum,
             user_token: str = None
     ) -> List[Any]:
         """
@@ -243,12 +244,12 @@ class BondWriteService:
                 symbol = getattr(bond_request, 'symbol', None)
                 if symbol and not await self.read_service.validate_symbol_unique(symbol, bond_type):
                     skipped_symbols.append(symbol)
-                    logger.warning(f"Skipping duplicate symbol {symbol} in bulk create for {bond_type}")
+                    logger.warning(f"Skipping duplicate symbol {symbol} in bulk create for {bond_type.value}")
                 else:
                     validated_requests.append(bond_request)
 
             if not validated_requests:
-                logger.warning(f"No valid {bond_type} bonds to create in bulk request")
+                logger.warning(f"No valid {bond_type.value} bonds to create in bulk request")
                 return []
 
             # Bulk create
@@ -261,20 +262,21 @@ class BondWriteService:
             #     if hasattr(bond, 'symbol') and bond.symbol:
             #         await self.read_service.invalidate_symbol_cache(bond.symbol, bond_type)
 
-            logger.info(f"Bulk created {len(results)} {bond_type} bonds, skipped {len(skipped_symbols)} duplicates")
+            logger.info(
+                f"Bulk created {len(results)} {bond_type.value} bonds, skipped {len(skipped_symbols)} duplicates")
             return results
 
         except Exception as e:
-            logger.error(f"Error in bulk create {bond_type} bonds: {str(e)}")
+            logger.error(f"Error in bulk create {bond_type.value} bonds: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to bulk create {bond_type} bonds"
+                detail=f"Failed to bulk create {bond_type.value} bonds"
             )
 
     async def bulk_update_bonds(
             self,
             updates: List[Tuple[int, Any]],
-            bond_type: str,
+            bond_type: BondTypeEnum,
             user_token: str = None
     ) -> List[Any]:
         """
@@ -288,18 +290,18 @@ class BondWriteService:
                 updated_bond = await self.update_bond(bond_id, bond_request, bond_type, user_token)
                 results.append(updated_bond)
             except Exception as e:
-                logger.error(f"Error updating {bond_type} bond {bond_id} in bulk: {str(e)}")
-                errors.append({"bond_id": bond_id, "bond_type": bond_type, "error": str(e)})
+                logger.error(f"Error updating {bond_type.value} bond {bond_id} in bulk: {str(e)}")
+                errors.append({"bond_id": bond_id, "bond_type": bond_type.value, "error": str(e)})
 
         if errors:
-            logger.warning(f"Bulk update completed with {len(errors)} errors for {bond_type}")
+            logger.warning(f"Bulk update completed with {len(errors)} errors for {bond_type.value}")
 
         return results
 
     async def bulk_delete_bonds(
             self,
             bond_ids: List[int],
-            bond_type: str,
+            bond_type: BondTypeEnum,
             user_token: str = None
     ) -> Dict[int, bool]:
         """
@@ -312,7 +314,7 @@ class BondWriteService:
                 success = await self.delete_bond(bond_id, bond_type, user_token)
                 results[bond_id] = success
             except Exception as e:
-                logger.error(f"Error deleting {bond_type} bond {bond_id} in bulk: {str(e)}")
+                logger.error(f"Error deleting {bond_type.value} bond {bond_id} in bulk: {str(e)}")
                 results[bond_id] = False
 
         return results
@@ -323,7 +325,7 @@ class BondWriteService:
             self,
             bond_id: int,
             new_price: float,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             user_token: str = None
     ) -> Any:
         """
@@ -335,11 +337,11 @@ class BondWriteService:
             if not existing_bond:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"{bond_type} bond with ID {bond_id} not found"
+                    detail=f"{bond_type.value} bond with ID {bond_id} not found"
                 )
 
             # Create price update - need to get the appropriate request schema
-            schemas = bond_schema_factory(bond_type)
+            schemas = bond_schema_factory(bond_type.value)
             request_schema = schemas['request']
 
             # Create minimal update with just price change
@@ -356,22 +358,22 @@ class BondWriteService:
             # Update bond
             updated_bond = await self.partial_update_bond(bond_id, price_update_data, bond_type, user_token)
 
-            logger.info(f"Updated price for {bond_type} bond {bond_id} to {new_price}")
+            logger.info(f"Updated price for {bond_type.value} bond {bond_id} to {new_price}")
             return updated_bond
 
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Failed to update price for {bond_type} bond {bond_id}: {str(e)}")
+            logger.error(f"Failed to update price for {bond_type.value} bond {bond_id}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to update price for {bond_type} bond {bond_id}"
+                detail=f"Failed to update price for {bond_type.value} bond {bond_id}"
             )
 
     async def bulk_update_bond_prices(
             self,
             price_updates: List[Tuple[int, float]],
-            bond_type: str,
+            bond_type: BondTypeEnum,
             user_token: str = None
     ) -> List[Any]:
         """
@@ -384,9 +386,9 @@ class BondWriteService:
                 result = await self.update_bond_price(bond_id, new_price, bond_type, user_token)
                 results.append(result)
             except Exception as e:
-                logger.error(f"Failed to update price for {bond_type} bond {bond_id}: {str(e)}")
+                logger.error(f"Failed to update price for {bond_type.value} bond {bond_id}: {str(e)}")
 
-        logger.info(f"Updated prices for {len(results)} {bond_type} bonds")
+        logger.info(f"Updated prices for {len(results)} {bond_type.value} bonds")
         return results
 
     # === Status Management ===
@@ -394,7 +396,7 @@ class BondWriteService:
     async def activate_bond(
             self,
             bond_id: int,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             user_token: str = None
     ) -> Any:
         """
@@ -405,11 +407,11 @@ class BondWriteService:
             if not existing_bond:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"{bond_type} bond with ID {bond_id} not found"
+                    detail=f"{bond_type.value} bond with ID {bond_id} not found"
                 )
 
             # Create update with is_active = True
-            schemas = bond_schema_factory(bond_type)
+            schemas = bond_schema_factory(bond_type.value)
             request_schema = schemas['request']
 
             update_data = {}
@@ -426,16 +428,16 @@ class BondWriteService:
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Error activating {bond_type} bond {bond_id}: {str(e)}")
+            logger.error(f"Error activating {bond_type.value} bond {bond_id}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to activate {bond_type} bond"
+                detail=f"Failed to activate {bond_type.value} bond"
             )
 
     async def deactivate_bond(
             self,
             bond_id: int,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             user_token: str = None
     ) -> Any:
         """
@@ -446,11 +448,11 @@ class BondWriteService:
             if not existing_bond:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"{bond_type} bond with ID {bond_id} not found"
+                    detail=f"{bond_type.value} bond with ID {bond_id} not found"
                 )
 
             # Create update with is_active = False
-            schemas = bond_schema_factory(bond_type)
+            schemas = bond_schema_factory(bond_type.value)
             request_schema = schemas['request']
 
             update_data = {}
@@ -467,17 +469,17 @@ class BondWriteService:
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Error deactivating {bond_type} bond {bond_id}: {str(e)}")
+            logger.error(f"Error deactivating {bond_type.value} bond {bond_id}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to deactivate {bond_type} bond"
+                detail=f"Failed to deactivate {bond_type.value} bond"
             )
 
     # === Multi-Type Operations ===
 
     async def bulk_create_mixed_bonds(
             self,
-            bond_requests: List[Tuple[str, Any]],  # List of (bond_type, bond_data) tuples
+            bond_requests: List[Tuple[BondTypeEnum, Any]],  # List of (bond_type, bond_data) tuples
             user_token: str = None
     ) -> Dict[str, List[Any]]:
         """
@@ -496,18 +498,18 @@ class BondWriteService:
         for bond_type, requests in grouped_requests.items():
             try:
                 type_results = await self.bulk_create_bonds(requests, bond_type, user_token)
-                results[bond_type] = type_results
+                results[bond_type.value] = type_results
             except Exception as e:
-                logger.error(f"Error in mixed bulk create for {bond_type}: {str(e)}")
-                results[bond_type] = []
+                logger.error(f"Error in mixed bulk create for {bond_type.value}: {str(e)}")
+                results[bond_type.value] = []
 
         return results
 
-    async def get_supported_bond_types(self) -> List[str]:
+    async def get_supported_bond_types(self) -> List[BondTypeEnum]:
         """
         Get list of supported bond types.
         """
-        return ['FIXED_COUPON', 'ZERO_COUPON', 'CALLABLE', 'PUTABLE', 'FLOATING', 'SINKING_FUND']
+        return list(BondTypeEnum)
 
 
 # Factory function

@@ -11,6 +11,7 @@ from fixed_income.src.api.bond_schema.BondPriceSchema import (
 from fixed_income.src.model.bonds.BondPrice import BondPrice  # Assuming this model exists
 
 from fixed_income.src.database.generic_database_service import GenericDatabaseService
+from fixed_income.src.model.enums import BondTypeEnum
 from fixed_income.src.services.fixed_income_price_read_service import get_bond_price_read_service
 from fixed_income.src.services.fixed_income_read_service import get_bond_read_service
 
@@ -42,7 +43,7 @@ class BondPriceWriteService:
     async def update_price(
             self,
             bond_id: int,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             price: Decimal,
             timestamp: datetime = None,
             source: str = "manual",
@@ -58,7 +59,7 @@ class BondPriceWriteService:
             if not bond:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"{bond_type} bond with ID {bond_id} not found"
+                    detail=f"{bond_type.value} bond with ID {bond_id} not found"
                 )
 
             # Use current time if not provided
@@ -78,26 +79,26 @@ class BondPriceWriteService:
                 # Update existing price
                 price_data = BondPriceRequest(
                     bond_id=bond_id,
-                    bond_type=bond_type,
+                    bond_type=bond_type.value,
                     price=price,
                     timestamp=timestamp,
                     source=source,
                     price_type=price_type
                 )
                 updated_price = await self.db_service.update(existing_price.id, price_data)
-                logger.info(f"Updated existing price for {bond_type} bond {bond_id} at {timestamp}")
+                logger.info(f"Updated existing price for {bond_type.value} bond {bond_id} at {timestamp}")
             else:
                 # Create new price record
                 price_data = BondPriceRequest(
                     bond_id=bond_id,
-                    bond_type=bond_type,
+                    bond_type=bond_type.value,
                     price=price,
                     timestamp=timestamp,
                     source=source,
                     price_type=price_type
                 )
                 updated_price = await self.db_service.create(price_data)
-                logger.info(f"Created new price for {bond_type} bond {bond_id}: {price}")
+                logger.info(f"Created new price for {bond_type.value} bond {bond_id}: {price}")
 
             # Future: Invalidate caches
             # await self.price_read_service.invalidate_price_cache(bond_id, bond_type)
@@ -110,10 +111,10 @@ class BondPriceWriteService:
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Error updating price for {bond_type} bond {bond_id}: {str(e)}")
+            logger.error(f"Error updating price for {bond_type.value} bond {bond_id}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to update {bond_type} bond price"
+                detail=f"Failed to update {bond_type.value} bond price"
             )
 
     async def bulk_update_prices(
@@ -129,17 +130,17 @@ class BondPriceWriteService:
             # Pre-validate all bond IDs exist
             bond_validations = {}
             for update in price_updates:
-                key = (update.bond_id, update.bond_type)
+                key = (update.bond_id, BondTypeEnum(update.bond_type))
                 if key not in bond_validations:
                     bond_validations[key] = await self.bond_read_service.validate_bond_exists(
-                        update.bond_id, update.bond_type
+                        update.bond_id, BondTypeEnum(update.bond_type)
                     )
 
             valid_updates = []
             invalid_updates = []
 
             for update in price_updates:
-                validation_key = (update.bond_id, update.bond_type)
+                validation_key = (update.bond_id, BondTypeEnum(update.bond_type))
                 if bond_validations.get(validation_key, False):
                     if update.price > 0:  # Basic validation
                         valid_updates.append(update)
@@ -161,7 +162,7 @@ class BondPriceWriteService:
                 try:
                     result = await self.update_price(
                         bond_id=update.bond_id,
-                        bond_type=update.bond_type,
+                        bond_type=BondTypeEnum(update.bond_type),
                         price=update.price,
                         timestamp=update.timestamp or datetime.now(),
                         source=update.source or "bulk_update",
@@ -185,7 +186,7 @@ class BondPriceWriteService:
     async def update_prices_from_feed(
             self,
             feed_data: Dict[str, any],
-            bond_type: str,
+            bond_type: BondTypeEnum,
             source: str = "market_feed",
             user_token: str = None
     ) -> Dict[str, any]:
@@ -202,7 +203,7 @@ class BondPriceWriteService:
                     # Get bond by symbol
                     bond = await self.bond_read_service.get_bond_by_symbol(symbol, bond_type)
                     if not bond:
-                        errors.append(f"Symbol {symbol} not found for bond type {bond_type}")
+                        errors.append(f"Symbol {symbol} not found for bond type {bond_type.value}")
                         continue
 
                     # Parse price data
@@ -217,7 +218,7 @@ class BondPriceWriteService:
 
                     price_updates.append(BondPriceRequest(
                         bond_id=bond.id,
-                        bond_type=bond_type,
+                        bond_type=bond_type.value,
                         price=price,
                         timestamp=timestamp,
                         source=source,
@@ -233,7 +234,7 @@ class BondPriceWriteService:
 
                 return {
                     "status": "completed",
-                    "bond_type": bond_type,
+                    "bond_type": bond_type.value,
                     "processed": len(results),
                     "errors": len(errors),
                     "error_details": errors[:10],  # Limit error details
@@ -243,7 +244,7 @@ class BondPriceWriteService:
             else:
                 return {
                     "status": "no_valid_data",
-                    "bond_type": bond_type,
+                    "bond_type": bond_type.value,
                     "processed": 0,
                     "errors": len(errors),
                     "error_details": errors,
@@ -252,10 +253,10 @@ class BondPriceWriteService:
                 }
 
         except Exception as e:
-            logger.error(f"Error processing market feed for {bond_type}: {str(e)}")
+            logger.error(f"Error processing market feed for {bond_type.value}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to process market data feed for {bond_type}"
+                detail=f"Failed to process market data feed for {bond_type.value}"
             )
 
     # === Historical Price Management ===
@@ -263,7 +264,7 @@ class BondPriceWriteService:
     async def bulk_import_historical_prices(
             self,
             bond_id: int,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             historical_data: List[Tuple[datetime, Decimal, str]],  # (timestamp, price, price_type)
             source: str = "historical_import",
             user_token: str = None
@@ -277,7 +278,7 @@ class BondPriceWriteService:
             if not bond:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"{bond_type} bond with ID {bond_id} not found"
+                    detail=f"{bond_type.value} bond with ID {bond_id} not found"
                 )
 
             # Prepare price requests
@@ -286,7 +287,7 @@ class BondPriceWriteService:
                 if price > 0:  # Basic validation
                     price_requests.append(BondPriceRequest(
                         bond_id=bond_id,
-                        bond_type=bond_type,
+                        bond_type=bond_type.value,
                         price=price,
                         timestamp=timestamp,
                         source=source,
@@ -298,7 +299,7 @@ class BondPriceWriteService:
                     "status": "no_valid_data",
                     "imported": 0,
                     "bond_id": bond_id,
-                    "bond_type": bond_type
+                    "bond_type": bond_type.value
                 }
 
             # Sort by timestamp for efficient processing
@@ -313,13 +314,13 @@ class BondPriceWriteService:
                 bond_id, bond_type, latest_price.price, latest_price.timestamp
             )
 
-            logger.info(f"Imported {len(results)} historical prices for {bond_type} bond {bond_id}")
+            logger.info(f"Imported {len(results)} historical prices for {bond_type.value} bond {bond_id}")
 
             return {
                 "status": "completed",
                 "imported": len(results),
                 "bond_id": bond_id,
-                "bond_type": bond_type,
+                "bond_type": bond_type.value,
                 "date_range": {
                     "start": price_requests[0].timestamp.isoformat(),
                     "end": price_requests[-1].timestamp.isoformat()
@@ -330,16 +331,16 @@ class BondPriceWriteService:
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Error importing historical prices for {bond_type} bond {bond_id}: {str(e)}")
+            logger.error(f"Error importing historical prices for {bond_type.value} bond {bond_id}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to import historical prices for {bond_type} bond"
+                detail=f"Failed to import historical prices for {bond_type.value} bond"
             )
 
     async def delete_price_data(
             self,
             bond_id: int,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             start_date: datetime = None,
             end_date: datetime = None,
             user_token: str = None
@@ -353,7 +354,7 @@ class BondPriceWriteService:
             if not bond:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"{bond_type} bond with ID {bond_id} not found"
+                    detail=f"{bond_type.value} bond with ID {bond_id} not found"
                 )
 
             # Get prices to delete for logging
@@ -377,13 +378,13 @@ class BondPriceWriteService:
             # Future: Invalidate caches
             # await self.price_read_service.invalidate_price_cache(bond_id, bond_type)
 
-            logger.info(f"Deleted {deleted_count} price records for {bond_type} bond {bond_id}")
+            logger.info(f"Deleted {deleted_count} price records for {bond_type.value} bond {bond_id}")
 
             return {
                 "status": "completed",
                 "deleted_count": deleted_count,
                 "bond_id": bond_id,
-                "bond_type": bond_type,
+                "bond_type": bond_type.value,
                 "date_range": {
                     "start": start_date.isoformat() if start_date else None,
                     "end": end_date.isoformat() if end_date else None
@@ -394,10 +395,10 @@ class BondPriceWriteService:
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Error deleting price data for {bond_type} bond {bond_id}: {str(e)}")
+            logger.error(f"Error deleting price data for {bond_type.value} bond {bond_id}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to delete price data for {bond_type} bond"
+                detail=f"Failed to delete price data for {bond_type.value} bond"
             )
 
     # === Price Correction Operations ===
@@ -444,7 +445,7 @@ class BondPriceWriteService:
             corrected_price_record = await self.db_service.update(price_id, correction_data)
 
             # Future: Invalidate caches
-            # await self.price_read_service.invalidate_price_cache(existing_price.bond_id, existing_price.bond_type)
+            # await self.price_read_service.invalidate_price_cache(existing_price.bond_id, BondTypeEnum(existing_price.bond_type))
 
             # Log correction
             logger.info(
@@ -468,7 +469,7 @@ class BondPriceWriteService:
     async def update_price_from_yield(
             self,
             bond_id: int,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             yield_to_maturity: Decimal,
             timestamp: datetime = None,
             source: str = "yield_calculation",
@@ -483,7 +484,7 @@ class BondPriceWriteService:
             if not bond:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"{bond_type} bond with ID {bond_id} not found"
+                    detail=f"{bond_type.value} bond with ID {bond_id} not found"
                 )
 
             # Calculate price from yield
@@ -509,17 +510,17 @@ class BondPriceWriteService:
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Error updating price from yield for {bond_type} bond {bond_id}: {str(e)}")
+            logger.error(f"Error updating price from yield for {bond_type.value} bond {bond_id}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to update price from yield for {bond_type} bond"
+                detail=f"Failed to update price from yield for {bond_type.value} bond"
             )
 
     # === Market Data Synchronization ===
 
     async def sync_with_market_data(
             self,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             bond_ids: List[int] = None,
             symbols: List[str] = None,
             force_update: bool = False,
@@ -547,7 +548,7 @@ class BondPriceWriteService:
             if not target_bonds:
                 return {
                     "status": "no_bonds_found",
-                    "bond_type": bond_type,
+                    "bond_type": bond_type.value,
                     "synced": 0,
                     "errors": 0
                 }
@@ -563,7 +564,7 @@ class BondPriceWriteService:
                     # market_price = await external_bond_data_provider.get_price(bond.symbol, bond_type)
                     #
                     # For now, simulate sync
-                    logger.info(f"Would sync price for {bond_type} bond {bond.symbol}")
+                    logger.info(f"Would sync price for {bond_type.value} bond {bond.symbol}")
                     synced_count += 1
 
                 except Exception as e:
@@ -571,7 +572,7 @@ class BondPriceWriteService:
 
             return {
                 "status": "completed",
-                "bond_type": bond_type,
+                "bond_type": bond_type.value,
                 "synced": synced_count,
                 "errors": len(errors),
                 "error_details": errors[:10],
@@ -580,10 +581,10 @@ class BondPriceWriteService:
             }
 
         except Exception as e:
-            logger.error(f"Error syncing market data for {bond_type}: {str(e)}")
+            logger.error(f"Error syncing market data for {bond_type.value}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to sync market data for {bond_type}"
+                detail=f"Failed to sync market data for {bond_type.value}"
             )
 
     # === Helper Methods ===
@@ -591,7 +592,7 @@ class BondPriceWriteService:
     async def _get_price_at_exact_timestamp(
             self,
             bond_id: int,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             timestamp: datetime
     ) -> Optional[BondPriceResponse]:
         """Get price at exact timestamp if exists."""
@@ -610,7 +611,7 @@ class BondPriceWriteService:
     async def _update_bond_current_price_if_latest(
             self,
             bond_id: int,
-            bond_type: str,
+            bond_type: BondTypeEnum,
             price: Decimal,
             timestamp: datetime
     ) -> bool:
@@ -625,14 +626,14 @@ class BondPriceWriteService:
                 # This would require access to bond write service or direct DB update
                 # For now, just log the action
                 logger.info(
-                    f"Would update current_price for {bond_type} bond {bond_id} to {price} "
+                    f"Would update current_price for {bond_type.value} bond {bond_id} to {price} "
                     f"(timestamp: {timestamp})"
                 )
                 return True
 
             return False
         except Exception as e:
-            logger.error(f"Error updating current price for {bond_type} bond {bond_id}: {str(e)}")
+            logger.error(f"Error updating current price for {bond_type.value} bond {bond_id}: {str(e)}")
             return False
 
     def _calculate_price_from_yield(self, bond: any, ytm: float) -> float:
@@ -672,7 +673,7 @@ class BondPriceWriteService:
     async def get_price_update_audit(
             self,
             bond_id: int = None,
-            bond_type: str = None,
+            bond_type: BondTypeEnum = None,
             start_date: datetime = None,
             end_date: datetime = None,
             source: str = None
@@ -719,7 +720,7 @@ class BondPriceWriteService:
             return {
                 "total_updates": len(price_updates),
                 "bond_id": bond_id,
-                "bond_type": bond_type,
+                "bond_type": bond_type.value if bond_type else None,
                 "date_range": {
                     "start": start_date.isoformat() if start_date else None,
                     "end": end_date.isoformat() if end_date else None
