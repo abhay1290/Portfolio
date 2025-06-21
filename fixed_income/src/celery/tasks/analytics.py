@@ -4,8 +4,8 @@ from fixed_income.src.celery.app import celery_app
 from fixed_income.src.database import SessionLocal
 from fixed_income.src.model.analytics.BondAnalyticsFactory import bond_analytics_factory
 from fixed_income.src.model.analytics.model.BaseAnalyticsModel import BondAnalyticsModel
-from fixed_income.src.model.bonds.BondModelFactory import bond_model_factory
 from fixed_income.src.utils.helpers import to_string
+from fixed_income.src.utils.model_mappers import bond_model_factory
 
 
 def process_bond_analytics(bond, db_session):
