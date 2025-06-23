@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 from Identifier_management.enums.identifier_type_enum import IdentifierTypeEnum
 from Identifier_management.generic_identifier_service_factory import GenericIdentifierServiceFactory
 from equity.src.database import get_db
-from equity.src.model.enums.equity_chnage_reason_enum import EquityChangeReasonEnum
+from equity.src.model.enums.equity_change_reason_enum import EquityChangeReasonEnum
 from equity.src.model.equity.Equity import Equity
 from equity.src.model.equity.equity_identifier_change_request import EquityIdentifierChangeRequest
 from equity.src.model.equity.equity_identifier_history import EquityIdentifierHistory
