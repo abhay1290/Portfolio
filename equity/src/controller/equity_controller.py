@@ -3,6 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List
 
+from equity.src.services.equity_identifier_service import EquityIdentifierService, get_equity_identifier_service
 from equity.src.services.equity_price_read_service import EquityPriceReadOnlyService, get_equity_price_read_service
 from equity.src.services.equity_price_write_service import EquityPriceWriteService, get_equity_price_write_service
 from equity.src.services.equity_read_service import EquityReadOnlyService, get_equity_read_service
@@ -26,6 +27,7 @@ class EquityController:
         self.equity_write_service: EquityWriteService = get_equity_write_service()
         self.price_read_service: EquityPriceReadOnlyService = get_equity_price_read_service()
         self.price_write_service: EquityPriceWriteService = get_equity_price_write_service()
+        self.identifier_service: EquityIdentifierService = get_equity_identifier_service()
 
         logger.info("EquityController initialized with all services")
 
@@ -207,7 +209,95 @@ class EquityController:
         """Get price update audit trail."""
         return await self.price_write_service.get_price_update_audit(equity_id, start_date, end_date, source)
 
-    # === Health Check ===
+    # === Identifier Operations  ===
+
+    async def get_equity_identifiers(self, equity_id: int):
+        """Get all current identifiers for an equity."""
+        return self.identifier_service.get_all_current_identifiers(equity_id)
+
+    async def get_equity_ticker(self, equity_id: int):
+        """Get current ticker for an equity."""
+        return self.identifier_service.get_current_ticker(equity_id)
+
+    async def get_equity_isin(self, equity_id: int):
+        """Get current ISIN for an equity."""
+        return self.identifier_service.get_current_isin(equity_id)
+
+    async def get_equity_cusip(self, equity_id: int):
+        """Get current CUSIP for an equity."""
+        return self.identifier_service.get_current_cusip(equity_id)
+
+    async def find_equity_by_ticker(self, ticker: str):
+        """Find equity by ticker symbol."""
+        return self.identifier_service.find_equity_by_ticker(ticker)
+
+    async def find_equity_by_isin(self, isin: str):
+        """Find equity by ISIN."""
+        return self.identifier_service.find_equity_by_isin(isin)
+
+    async def find_equity_by_cusip(self, cusip: str):
+        """Find equity by CUSIP."""
+        return self.identifier_service.find_equity_by_cusip(cusip)
+
+    async def add_equity_identifiers(self, equity_id: int, ticker: str = None, isin: str = None,
+                                     cusip: str = None, sedol: str = None, created_by: str = "system"):
+        """Add multiple identifiers to an equity."""
+        return self.identifier_service.bulk_add_equity_identifiers(
+            equity_id=equity_id,
+            ticker=ticker,
+            isin=isin,
+            cusip=cusip,
+            sedol=sedol,
+            created_by=created_by
+        )
+
+    async def request_ticker_change(self, equity_id: int, new_ticker: str, requested_by: str):
+        """Request a ticker symbol change."""
+        return self.identifier_service.request_ticker_change(
+            equity_id=equity_id,
+            new_ticker=new_ticker,
+            requested_by=requested_by
+        )
+
+    async def approve_identifier_change(self, change_request_id, approved_by: str):
+        """Approve identifier change request."""
+        return self.identifier_service.approve_change_request(change_request_id, approved_by)
+
+    async def reject_identifier_change(self, change_request_id, rejected_by: str, reason: str = None):
+        """Reject identifier change request."""
+        return self.identifier_service.reject_change_request(change_request_id, rejected_by, reason)
+
+    async def get_pending_change_requests(self, equity_id: int = None):
+        """Get pending change requests."""
+        return self.identifier_service.get_pending_change_requests(equity_id)
+
+    async def get_identifier_history(self, equity_id: int, identifier_type):
+        """Get identifier history."""
+        return self.identifier_service.get_identifier_history(equity_id, identifier_type)
+
+    async def search_identifiers(self, search_term: str, identifier_types=None):
+        """Search for identifiers."""
+        return self.identifier_service.search_identifiers(search_term, identifier_types)
+
+    async def get_identifier_statistics(self):
+        """Get identifier system statistics."""
+        return self.identifier_service.get_identifier_statistics()
+
+    async def rollback_identifier(self, equity_id: int, identifier_type, target_version: int, reason: str,
+                                  performed_by: str):
+        """Rollback identifier to specific version."""
+        return self.identifier_service.rollback_identifier(equity_id, identifier_type, target_version, reason,
+                                                           performed_by)
+
+    async def get_version_diff(self, equity_id: int, identifier_type, version1: int, version2: int):
+        """Compare two versions of an identifier."""
+        return self.identifier_service.get_version_diff(equity_id, identifier_type, version1, version2)
+
+    async def validate_identifier_integrity(self, equity_id: int = None):
+        """Validate identifier data integrity."""
+        return self.identifier_service.validate_identifier_integrity(equity_id)
+
+    # === Updated Health Check ===
 
     async def health_check(self):
         """Simple health check across services."""
@@ -215,15 +305,26 @@ class EquityController:
             # Test each service with a simple operation
             equity_count = await self.equity_read_service.count_equities()
 
+            # Test identifier service
+            try:
+                identifier_stats = self.identifier_service.get_identifier_statistics()
+                identifier_service_status = "healthy"
+            except Exception as e:
+                logger.warning(f"Identifier service health check failed: {str(e)}")
+                identifier_service_status = "unhealthy"
+                identifier_stats = None
+
             return {
                 "status": "healthy",
                 "services": {
                     "equity_read": "healthy",
                     "equity_write": "healthy",
                     "price_read": "healthy",
-                    "price_write": "healthy"
+                    "price_write": "healthy",
+                    "identifier_service": identifier_service_status
                 },
                 "equity_count": equity_count,
+                "identifier_statistics": identifier_stats,
                 "timestamp": datetime.now().isoformat()
             }
         except Exception as e:

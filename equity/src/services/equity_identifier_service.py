@@ -1,10 +1,9 @@
 # equity_service/services/equity_identifier_service.py
 from typing import Dict, List, Optional
 
-from sqlalchemy.orm import Session
-
 from Identifier_management.enums.identifier_type_enum import IdentifierTypeEnum
 from Identifier_management.generic_identifier_service_factory import GenericIdentifierServiceFactory
+from equity.src.database import get_db
 from equity.src.model.enums.equity_chnage_reason_enum import EquityChangeReasonEnum
 from equity.src.model.equity.Equity import Equity
 from equity.src.model.equity.equity_identifier_change_request import EquityIdentifierChangeRequest
@@ -15,12 +14,12 @@ from equity.src.model.equity.equity_identifier_snapshot import EquityIdentifierS
 class EquityIdentifierService:
     """Service for managing equity identifiers using the generic framework"""
 
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self):
+        self.session = get_db()
 
         # Create the generic identifier manager
         self.identifier_manager = GenericIdentifierServiceFactory.create_identifier_manager(
-            session=session,
+            session=self.session,
             history_model=EquityIdentifierHistory,
             snapshot_model=EquityIdentifierSnapshot,
             change_request_model=EquityIdentifierChangeRequest,
@@ -141,3 +140,9 @@ class EquityIdentifierService:
     def validate_identifier_integrity(self, equity_id: int = None):
         """Validate data integrity"""
         return self.identifier_manager.validate_identifier_integrity(equity_id)
+
+
+# Factory function
+def get_equity_identifier_service() -> EquityIdentifierService:
+    """Factory function for dependency injection"""
+    return EquityIdentifierService()

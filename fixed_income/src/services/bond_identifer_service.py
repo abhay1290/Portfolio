@@ -1,9 +1,8 @@
 # fixed_income_service/services/bond_identifier_service.py
 from typing import Dict, List, Optional
 
-from sqlalchemy.orm import Session
-
 from Identifier_management.generic_identifier_service_factory import GenericIdentifierServiceFactory
+from fixed_income.src.database import get_db
 from fixed_income.src.model.bonds import BondBase
 from fixed_income.src.model.bonds.bond_identifer_snapshot import BondIdentifierSnapshot
 from fixed_income.src.model.bonds.bond_identifier_change_request import BondIdentifierChangeRequest
@@ -15,12 +14,12 @@ from fixed_income.src.model.enums.bond_identifier_type_enum import BondIdentifie
 class BondIdentifierService:
     """Service for managing bond identifiers using the generic framework"""
 
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self):
+        self.session = get_db()
 
         # Create the generic identifier manager
         self.identifier_manager = GenericIdentifierServiceFactory.create_identifier_manager(
-            session=session,
+            session=self.session,
             history_model=BondIdentifierHistory,
             snapshot_model=BondIdentifierSnapshot,
             change_request_model=BondIdentifierChangeRequest,
@@ -172,3 +171,9 @@ class BondIdentifierService:
     def get_identifier_statistics(self):
         """Get system statistics"""
         return self.identifier_manager.get_identifier_statistics()
+
+
+# Factory function
+def get_bond_identifier_service() -> BondIdentifierService:
+    """Factory function for dependency injection"""
+    return BondIdentifierService()

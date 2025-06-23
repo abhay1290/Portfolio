@@ -1,9 +1,11 @@
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from fixed_income.src.model.enums import BondTypeEnum
+from fixed_income.src.model.enums.bond_identifier_type_enum import BondIdentifierTypeEnum
+from fixed_income.src.services.bond_identifer_service import BondIdentifierService, get_bond_identifier_service
 from fixed_income.src.services.fixed_income_price_read_service import BondPriceReadOnlyService, \
     get_bond_price_read_service
 from fixed_income.src.services.fixed_income_price_write_service import BondPriceWriteService, \
@@ -30,6 +32,7 @@ class FixedIncomeController:
         self.bond_write_service: BondWriteService = get_bond_write_service()
         self.price_read_service: BondPriceReadOnlyService = get_bond_price_read_service()
         self.price_write_service: BondPriceWriteService = get_bond_price_write_service()
+        self.bond_identifier_service: BondIdentifierService = get_bond_identifier_service()
 
         logger.info("FixedIncomeController initialized with all services")
 
@@ -262,6 +265,79 @@ class FixedIncomeController:
     async def get_current_bond_prices(self, bond_ids: List[int], bond_type: BondTypeEnum):
         """Get current prices for multiple bonds (convenience method)."""
         return await self.bond_read_service.get_current_prices(bond_ids, bond_type)
+
+        # === Bond Identifier Operations ===
+
+    async def get_bond_isin(self, bond_id: int) -> Optional[str]:
+        """Get current ISIN for a bond."""
+        return self.bond_identifier_service.get_current_isin(bond_id)
+
+    async def get_bond_cusip(self, bond_id: int) -> Optional[str]:
+        """Get current CUSIP for a bond."""
+        return self.bond_identifier_service.get_current_cusip(bond_id)
+
+    async def get_bond_rating(self, bond_id: int, agency: str = "MOODY") -> Optional[str]:
+        """Get current rating for a bond from specific agency."""
+        return self.bond_identifier_service.get_current_rating(bond_id, agency)
+
+    async def find_bond_by_isin(self, isin: str):
+        """Find bond by ISIN."""
+        return self.bond_identifier_service.find_bond_by_isin(isin)
+
+    async def find_bond_by_cusip(self, cusip: str):
+        """Find bond by CUSIP."""
+        return self.bond_identifier_service.find_bond_by_cusip(cusip)
+
+    async def get_bonds_by_rating(self, agency: str, rating: str):
+        """Get all bonds with specific rating."""
+        return self.bond_identifier_service.get_bonds_by_rating(agency, rating)
+
+    async def get_bond_identifiers(self, bond_id: int) -> Dict[str, str]:
+        """Get all current identifiers for a bond."""
+        return self.bond_identifier_service.get_all_current_identifiers(bond_id)
+
+    async def add_bond_identifiers(self, bond_id: int, isin: str = None, cusip: str = None,
+                                   rating_moody: str = None, rating_sp: str = None,
+                                   created_by: str = "system", source: str = None):
+        """Add multiple identifiers to a bond at once."""
+        return self.bond_identifier_service.bulk_add_bond_identifiers(
+            bond_id, isin, cusip, rating_moody, rating_sp, created_by, source
+        )
+
+    async def request_rating_change(self, bond_id: int, agency: str, new_rating: str,
+                                    requested_by: str, rating_rationale: str = None):
+        """Request a rating change for a bond."""
+        return self.bond_identifier_service.request_rating_change(
+            bond_id, agency, new_rating, requested_by, rating_rationale
+        )
+
+    async def validate_rating_format(self, rating: str, agency: str) -> bool:
+        """Validate rating format for specific agency."""
+        return self.bond_identifier_service.validate_rating_format(rating, agency)
+
+    async def get_identifier_history(self, bond_id: int, identifier_type: BondIdentifierTypeEnum):
+        """Get identifier history for a bond."""
+        return self.bond_identifier_service.get_identifier_history(bond_id, identifier_type)
+
+    async def approve_identifier_change(self, change_request_id: int, approved_by: str):
+        """Approve identifier change request."""
+        return self.bond_identifier_service.approve_change_request(change_request_id, approved_by)
+
+    async def reject_identifier_change(self, change_request_id: int, rejected_by: str, reason: str = None):
+        """Reject identifier change request."""
+        return self.bond_identifier_service.reject_change_request(change_request_id, rejected_by, reason)
+
+    async def get_pending_identifier_changes(self, bond_id: int = None):
+        """Get pending identifier change requests."""
+        return self.bond_identifier_service.get_pending_change_requests(bond_id)
+
+    async def search_identifiers(self, search_term: str, identifier_types: List[BondIdentifierTypeEnum] = None):
+        """Search for identifiers across bonds."""
+        return self.bond_identifier_service.search_identifiers(search_term, identifier_types)
+
+    async def get_identifier_statistics(self):
+        """Get identifier system statistics."""
+        return self.bond_identifier_service.get_identifier_statistics()
 
     # === Health Check ===
 
