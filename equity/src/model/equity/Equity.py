@@ -56,7 +56,21 @@ class Equity(Base):
 
     # corporate_action_ids = Column(JSONB, nullable=True, default=list)
 
-    # Relationships
+    # Identifier relationships
+    identifier_history = relationship(
+        "EquityIdentifierHistory",
+        back_populates="equity",
+        cascade="all, delete-orphan"
+    )
+
+    current_identifiers = relationship(
+        "EquityIdentifierSnapshot",
+        back_populates="equity",
+        cascade="all, delete-orphan",
+        uselist=False
+    )
+
+    # Corporate Action Relationships
     corporate_action_history_log = relationship(
         "CorporateActionHistoryLog",
         back_populates="equity",
